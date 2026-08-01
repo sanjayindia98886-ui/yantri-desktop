@@ -1,0 +1,468 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { usePermission } from '../context/PermissionContext';
+
+export default function MasterF5() {
+  // Context से Role & Action Permissions पढ़ना
+  const { permissions, user } = usePermission();
+
+  // 1. Role Logic
+  const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'SUPER_ADMIN';
+  const isAdmin = isSuperAdmin || user?.role === 'admin' || user?.role === 'ADMIN' || user?.username === 'admin';
+  const isUser = !isAdmin;
+
+  // 2. Delete Permission Logic
+  const canDelete = isSuperAdmin || !!permissions?.can_delete_voucher;
+
+  // Date States persisted in localStorage
+  const getTodayDateStr = function() {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    return dd + '/' + mm + '/' + yyyy;
+  };
+
+  // Date States (Auto-set to Today)
+  const [uploadDate, setUploadDate] = useState(getTodayDateStr());
+  const [downloadDate, setDownloadDate] = useState(getTodayDateStr());
+  const [userSaleDate, setUserSaleDate] = useState(getTodayDateStr());
+  const [uploadLogDate, setUploadLogDate] = useState(getTodayDateStr());
+
+  // Dynamic Game List
+  const [gameList, setGameList] = useState([]);
+  const [uploadGame, setUploadGame] = useState('GB');
+  const [downloadGame, setDownloadGame] = useState('GB');
+  const [userSaleGame, setUserSaleGame] = useState('GB');
+
+  const [deleteWithOpeningDate, setDeleteWithOpeningDate] = useState('');
+  
+  const [deleteWithoutOpeningType, setDeleteWithoutOpeningType] = useState('All');
+  const [deleteWithoutOpeningTill, setDeleteWithoutOpeningTill] = useState('');
+  const [selectedParty, setSelectedParty] = useState('');
+  const [partyList, setPartyList] = useState([]);
+
+  const [userSaleType, setUserSaleType] = useState('Local');
+  const [userSaleSummary, setUserSaleSummary] = useState([]);
+  const [totalUserSaleAmount, setTotalUserSaleAmount] = useState('0.0');
+
+  const [userSaleLog, setUserSaleLog] = useState([]);
+
+  // Date Change Handlers
+  const handleUploadDateChange = function(e) {
+    const val = e.target.value;
+    setUploadDate(val);
+    localStorage.setItem('f5_upload_date', val);
+  };
+
+  const handleDownloadDateChange = function(e) {
+    const val = e.target.value;
+    setDownloadDate(val);
+    localStorage.setItem('f5_download_date', val);
+  };
+
+  const handleUserSaleDateChange = function(e) {
+    const val = e.target.value;
+    setUserSaleDate(val);
+    localStorage.setItem('f5_user_sale_date', val);
+  };
+
+  const handleUploadLogDateChange = function(e) {
+    const val = e.target.value;
+    setUploadLogDate(val);
+    localStorage.setItem('f5_upload_log_date', val);
+  };
+
+  useEffect(function() {
+    fetchParties();
+    fetchGames();
+  }, []);
+
+  const fetchGames = async function() {
+    try {
+      const res = await axios.get('http://localhost:5000/api/games');
+      if (res.data && res.data.success && Array.isArray(res.data.games)) {
+        setGameList(res.data.games);
+        if (res.data.games.length > 0) {
+          const firstGame = res.data.games[0].game_name;
+          setUploadGame(firstGame);
+          setDownloadGame(firstGame);
+          setUserSaleGame(firstGame);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching games in F5:", err);
+    }
+  };
+
+  const fetchParties = async function() {
+    try {
+      const res = await axios.get('http://localhost:5000/api/parties');
+      if (res.data) {
+        setPartyList(Array.isArray(res.data) ? res.data : []);
+      }
+    } catch (err) {
+      console.error("Error fetching parties:", err);
+    }
+  };
+
+  const handleUploadSale = async function() {
+    try {
+      const res = await axios.post('http://localhost:5000/api/master/upload-sale', { date: uploadDate, game: uploadGame });
+      alert(res.data.message || 'Sale Upload Successful!');
+    } catch (err) { alert('Upload Sale failed!'); }
+  };
+
+  // MasterF5.jsx mein Upload Party wala Handler
+const handleUploadParty = async () => {
+  try {
+    // Check karein ki local storage ya state se parties list ja rahi hai
+    const response = await axios.post('http://localhost:5000/api/master/upload-party', {
+      parties: partyList // <--- Yahan 'parties' naam ki array honi zaroori hai
+    });
+    
+    if(response.data.status) {
+      alert('Party uploaded successfully!');
+    }
+  } catch (error) {
+    alert('Upload Party failed!');
+  }
+};
+
+  const handleDownloadSale = async function() {
+    try {
+      const res = await axios.post('http://localhost:5000/api/master/download-sale', { date: downloadDate, game: downloadGame });
+      alert(res.data.message || 'Sale Download Completed!');
+    } catch (err) { alert('Download Sale failed!'); }
+  };
+
+  const handleDownloadParty = async function() {
+    try {
+      const res = await axios.post('http://localhost:5000/api/master/download-party', { date: downloadDate, game: downloadGame });
+      alert(res.data.message || 'Party Accounts Downloaded Successfully!');
+    } catch (err) { alert('Download Party failed!'); }
+  };
+
+  const handleDeleteDownloadedVouchers = async function() {
+    if (!canDelete) return alert('Access Denied: You do not have permission to delete vouchers.');
+    if (!window.confirm('Delete downloaded vouchers?')) return;
+    try {
+      const res = await axios.post('http://localhost:5000/api/master/delete-downloaded-vouchers');
+      alert(res.data.message || 'Downloaded Vouchers Deleted!');
+    } catch (err) { alert('Delete failed!'); }
+  };
+
+  const handleDeleteWithOpening = async function() {
+    if (!canDelete) return alert('Access Denied: You do not have permission to delete.');
+    if (!deleteWithOpeningDate) return alert('Please enter Till Date!');
+    const confirmMsg = 'Delete Sale With Opening till ' + deleteWithOpeningDate + '?';
+    if (!window.confirm(confirmMsg)) return;
+    try {
+      const res = await axios.post('http://localhost:5000/api/master/delete-sale-with-opening', { tillDate: deleteWithOpeningDate });
+      alert(res.data.message);
+    } catch (err) { alert('Delete With Opening failed!'); }
+  };
+
+  const handleDeleteWithoutOpening = async function() {
+    if (!canDelete) return alert('Access Denied: You do not have permission to delete.');
+    if (!deleteWithoutOpeningTill) return alert('Please enter Till Date!');
+    if (!window.confirm('Delete Sale Without Opening?')) return;
+    try {
+      const res = await axios.post('http://localhost:5000/api/master/delete-sale-without-opening', {
+        type: deleteWithoutOpeningType,
+        tillDate: deleteWithoutOpeningTill,
+        partyId: selectedParty
+      });
+      alert(res.data.message);
+    } catch (err) { alert('Delete Sale failed!'); }
+  };
+
+  const handleDeleteAccount = async function() {
+    if (!canDelete) return alert('Access Denied: You do not have permission to delete account.');
+    if (deleteWithoutOpeningType === 'Selected Party' && !selectedParty) return alert('Please choose a Party!');
+    if (!window.confirm('Are you sure you want to delete account(s)?')) return;
+    try {
+      const res = await axios.post('http://localhost:5000/api/master/delete-account', {
+        type: deleteWithoutOpeningType,
+        partyId: selectedParty
+      });
+      alert(res.data.message);
+    } catch (err) { alert('Delete Account failed!'); }
+  };
+
+  const handleFindUserSale = async function() {
+    try {
+      const res = await axios.get('http://localhost:5000/api/master/user-sale-summary', {
+        params: { type: userSaleType, date: userSaleDate, game: userSaleGame }
+      });
+      setUserSaleSummary(res.data.summary || []);
+      setTotalUserSaleAmount(res.data.totalAmount || '0.0');
+    } catch (err) { alert('Error fetching user sale!'); }
+  };
+
+  const handleFindUploadLogs = async function() {
+    try {
+      const res = await axios.get('http://localhost:5000/api/master/user-sale-logs', {
+        params: { date: uploadLogDate }
+      });
+      setUserSaleLog(res.data.logs || []);
+    } catch (err) { alert('Error fetching upload logs!'); }
+  };
+
+  const panelBoxStyle = {
+    border: '1px solid #7a96df',
+    background: '#e0e8f8',
+    padding: '8px',
+    borderRadius: '2px'
+  };
+
+  const maroonBtnStyle = {
+    background: canDelete ? '#600000' : '#888888',
+    color: '#ffffff',
+    border: '1px solid #300000',
+    cursor: canDelete ? 'pointer' : 'not-allowed',
+    padding: '4px 8px',
+    fontSize: '11px',
+    fontWeight: 'bold',
+    opacity: canDelete ? 1 : 0.6
+  };
+
+  return (
+    <div style={{ padding: '8px', background: '#dcdcdc', minHeight: '93vh', fontSize: '11px', fontFamily: 'Tahoma, Arial, sans-serif', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      
+      {/* Top Panel - Dynamic Columns Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: isAdmin ? '1.1fr 1.2fr 1.3fr 1.4fr' : '1fr 1fr 1.4fr', gap: '8px' }}>
+        
+        {/* Box 1: Server Upload Section */}
+        <div style={panelBoxStyle}>
+          <strong style={{ color: '#000' }}>
+            {isAdmin ? 'Server Upload' : 'Server Upload-Sale'}
+          </strong>
+          <div style={{ marginTop: '12px' }}>
+            Date: <input type="text" value={uploadDate} onChange={handleUploadDateChange} style={{ width: '85px', padding: '1px 3px' }} />
+          </div>
+          <div style={{ marginTop: '6px' }}>
+            Game: <select value={uploadGame} onChange={function(e) { setUploadGame(e.target.value); }} style={{ width: '90px' }}>
+              {gameList.length > 0 ? (
+                gameList.map(function(g) {
+                  const gName = g.game_name || g;
+                  return <option key={g.game_id || gName} value={gName}>{gName}</option>;
+                })
+              ) : (
+                <option value="GB">GB</option>
+              )}
+            </select>
+          </div>
+
+          <button onClick={handleUploadSale} style={{ marginTop: '16px', width: '100%', padding: '4px' }}>
+            Upload Sale
+          </button>
+          
+          {isAdmin && (
+            <button onClick={handleUploadParty} style={{ marginTop: '10px', width: '100%', padding: '4px' }}>
+              Upload Party
+            </button>
+          )}
+        </div>
+
+        {/* Box 2: Server Download Section */}
+        <div style={panelBoxStyle}>
+          <strong style={{ color: '#000' }}>
+            {isAdmin ? 'Server Download-Sale' : 'Server Download-Party'}
+          </strong>
+          <div style={{ marginTop: '12px' }}>
+            Date: <input type="text" value={downloadDate} onChange={handleDownloadDateChange} style={{ width: '85px', padding: '1px 3px' }} />
+          </div>
+          <div style={{ marginTop: '6px' }}>
+            Game: <select value={downloadGame} onChange={function(e) { setDownloadGame(e.target.value); }} style={{ width: '90px' }}>
+              {gameList.length > 0 ? (
+                gameList.map(function(g) {
+                  const gName = g.game_name || g;
+                  return <option key={g.game_id || gName} value={gName}>{gName}</option>;
+                })
+              ) : (
+                <option value="GB">GB</option>
+              )}
+            </select>
+          </div>
+
+          {isAdmin && (
+            <button onClick={handleDownloadSale} style={{ marginTop: '16px', width: '100%', padding: '4px' }}>
+              Download Sale
+            </button>
+          )}
+
+          {isUser && (
+            <button onClick={handleDownloadParty} style={{ marginTop: '16px', width: '100%', padding: '4px' }}>
+              Download Party
+            </button>
+          )}
+
+          {isAdmin && (
+            <button onClick={handleDeleteDownloadedVouchers} disabled={!canDelete} style={{ ...maroonBtnStyle, marginTop: '20px', width: '100%' }}>
+              Delete Downloaded Vouchers
+            </button>
+          )}
+        </div>
+
+        {/* Box 3: Delete Options Stack (Sirf Admin ko dikhega) */}
+        {isAdmin && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            
+            <div style={panelBoxStyle}>
+              <strong>Delete Sale With Opening</strong>
+              <div style={{ marginTop: '6px' }}>
+                Till Date: <input type="text" placeholder="//" value={deleteWithOpeningDate} onChange={function(e) { setDeleteWithOpeningDate(e.target.value); }} style={{ width: '85px' }} />
+              </div>
+              <button onClick={handleDeleteWithOpening} disabled={!canDelete} style={{ ...maroonBtnStyle, marginTop: '8px', width: '100%' }}>Delete Sale With Opening</button>
+            </div>
+
+            <div style={panelBoxStyle}>
+              <strong>Delete Sale Without Opening</strong>
+              <div style={{ marginTop: '6px' }}>
+                <label><input type="radio" name="dso" checked={deleteWithoutOpeningType === 'All'} onChange={function() { setDeleteWithoutOpeningType('All'); }} /> All</label>
+                <label style={{ marginLeft: '12px' }}>
+                  <input 
+                    type="radio" 
+                    name="dso" 
+                    checked={deleteWithoutOpeningType === 'Selected Party'} 
+                    onChange={function() {
+                      setDeleteWithoutOpeningType('Selected Party');
+                      fetchParties();
+                    }} 
+                  /> Selected Party
+                </label>
+              </div>
+              <div style={{ marginTop: '6px' }}>
+                Till Date: <input type="text" placeholder="//" value={deleteWithoutOpeningTill} onChange={function(e) { setDeleteWithoutOpeningTill(e.target.value); }} style={{ width: '75px' }} />
+              </div>
+              <div style={{ marginTop: '6px' }}>
+                Party: <select value={selectedParty} onChange={function(e) { setSelectedParty(e.target.value); }} style={{ width: '110px' }}>
+                  <option value="">-- Choose --</option>
+                  {partyList.map(function(p) {
+                    const partyId = p.pno || p.Pno || p.id;
+                    const partyName = p.party_name || p.PName || p.pname || p.name;
+                    return (
+                      <option key={partyId} value={partyId}>
+                        {partyName}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              <button onClick={handleDeleteWithoutOpening} disabled={!canDelete} style={{ ...maroonBtnStyle, marginTop: '8px', width: '100%' }}>Delete Sale</button>
+              <button onClick={handleDeleteAccount} disabled={!canDelete} style={{ ...maroonBtnStyle, marginTop: '5px', width: '100%' }}>Delete Account</button>
+            </div>
+
+          </div>
+        )}
+
+        {/* Box 4: User Sale Summary Table (Ab Admin Aur User Dono Ko Dikhega) */}
+        <div style={panelBoxStyle}>
+          <div style={{ textAlign: 'center', fontWeight: 'bold' }}>User Sale</div>
+          <div style={{ marginTop: '4px', textAlign: 'center' }}>
+            <label><input type="radio" name="ust" checked={userSaleType === 'Local'} onChange={function() { setUserSaleType('Local'); }} /> Local</label>
+            <label style={{ marginLeft: '15px' }}><input type="radio" name="ust" checked={userSaleType === 'Server'} onChange={function() { setUserSaleType('Server'); }} /> Server</label>
+          </div>
+          <div style={{ marginTop: '6px' }}>
+            Date: <input type="text" value={userSaleDate} onChange={handleUserSaleDateChange} style={{ width: '80px' }} />
+          </div>
+          <div style={{ marginTop: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Game: <select value={userSaleGame} onChange={function(e) { setUserSaleGame(e.target.value); }} style={{ width: '90px' }}>
+              {gameList.length > 0 ? (
+                gameList.map(function(g) {
+                  const gName = g.game_name || g;
+                  return <option key={g.game_id || gName} value={gName}>{gName}</option>;
+                })
+              ) : (
+                <option value="GB">GB</option>
+              )}
+            </select></span>
+            <button onClick={handleFindUserSale} style={{ padding: '2px 12px' }}>Find</button>
+          </div>
+
+          <div style={{ marginTop: '8px', height: '170px', overflowY: 'auto', background: '#fff', border: '1px solid #7f9db9' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
+              <thead>
+                <tr style={{ background: '#ece9d8', borderBottom: '1px solid #acd' }}>
+                  <th style={{ padding: '2px 5px', borderRight: '1px solid #ccc' }}>UserId</th>
+                  <th style={{ padding: '2px 5px' }}>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {userSaleSummary.length > 0 ? (
+                  userSaleSummary.map(function(item, idx) {
+                    return (
+                      <tr key={idx} style={{ background: idx === 0 ? '#004080' : 'transparent', color: idx === 0 ? '#fff' : '#000' }}>
+                        <td style={{ padding: '2px 5px', borderRight: '1px solid #eee' }}>{item.userId}</td>
+                        <td style={{ padding: '2px 5px' }}>{item.amount}</td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr><td colSpan="2" style={{ textAlign: 'center', padding: '10px', color: '#888' }}>No data found</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ textAlign: 'right', fontWeight: 'bold', marginTop: '6px', fontSize: '13px', paddingRight: '5px' }}>
+            {totalUserSaleAmount}
+          </div>
+        </div>
+
+      </div>
+
+      {/* Lower Log Panel */}
+      <div style={{ display: 'flex', gap: '8px' }}>
+        
+        {/* Delete Server Panel: Sirf Admin Ko Dikhega */}
+        {isAdmin && (
+          <div style={{ width: '220px', ...panelBoxStyle }}>
+            <strong>Delete Server</strong>
+            <button disabled={!canDelete} style={{ ...maroonBtnStyle, marginTop: '20px', width: '100%', padding: '6px' }}>Delete Sale</button>
+          </div>
+        )}
+
+        {/* User Sale Upload Time Table: Admin Aur User Dono Ko Dikhega */}
+        <div style={{ flex: 1, ...panelBoxStyle }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', alignItems: 'center' }}>
+            <strong style={{ color: '#800000', fontSize: '12px' }}>User Sale Upload Time</strong>
+            <span>Date: <input type="text" value={uploadLogDate} onChange={handleUploadLogDateChange} style={{ width: '85px' }} /></span>
+            <button onClick={handleFindUploadLogs} style={{ padding: '2px 14px' }}>Find</button>
+          </div>
+
+          <div style={{ marginTop: '8px', height: '140px', overflowY: 'auto', background: '#fff', border: '1px solid #7f9db9' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
+              <thead>
+                <tr style={{ background: '#ece9d8', borderBottom: '1px solid #ccc' }}>
+                  <th style={{ padding: '3px 6px', borderRight: '1px solid #ccc' }}>SaleDate</th>
+                  <th style={{ padding: '3px 6px', borderRight: '1px solid #ccc' }}>Shift</th>
+                  <th style={{ padding: '3px 6px', borderRight: '1px solid #ccc' }}>UserID</th>
+                  <th style={{ padding: '3px 6px' }}>UploadedOn</th>
+                </tr>
+              </thead>
+              <tbody>
+                {userSaleLog.length > 0 ? (
+                  userSaleLog.map(function(log, idx) {
+                    return (
+                      <tr key={idx} style={{ background: idx === 0 ? '#004080' : 'transparent', color: idx === 0 ? '#fff' : '#000' }}>
+                        <td style={{ padding: '2px 6px', borderRight: '1px solid #eee' }}>{log.saleDate}</td>
+                        <td style={{ padding: '2px 6px', borderRight: '1px solid #eee' }}>{log.shift}</td>
+                        <td style={{ padding: '2px 6px', borderRight: '1px solid #eee' }}>{log.userId}</td>
+                        <td style={{ padding: '2px 6px' }}>{log.uploadedOn}</td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr><td colSpan="4" style={{ textAlign: 'center', padding: '10px', color: '#888' }}>No logs found</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
