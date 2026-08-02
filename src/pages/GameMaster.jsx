@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 
+
 export default function GameMaster() {
   const [games, setGames] = useState([]);
   const [newGameName, setNewGameName] = useState('');
   const [selectedGame, setSelectedGame] = useState(null);
 
   // Fetch All Games from Database
-  const fetchGames = function() {
-    fetch('http://localhost:5000/api/games')
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
+  const fetchGames = function () {
+    fetch('https://yantri-desktop.onrender.com/api/games')
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
         if (data.success) {
           setGames(data.games || []);
           if ((data.games || []).length > 0) {
@@ -19,46 +20,49 @@ export default function GameMaster() {
           }
         }
       })
-      .catch(function(err) {
+      .catch(function (err) {
         console.error('Error fetching games:', err);
       });
   };
 
-  useEffect(function() {
+  useEffect(function () {
     fetchGames();
   }, []);
 
   // Add New Game Handler
-  const handleAddGame = function() {
+  const handleAddGame = function () {
     const trimmed = newGameName.toUpperCase().trim();
     if (!trimmed) {
       alert('कृपया गेम का नाम दर्ज करें!');
       return;
     }
 
-    fetch('http://localhost:5000/api/games', {
+    fetch('https://yantri-desktop.onrender.com/api/games', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ game_name: trimmed })
     })
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
         if (data.success) {
           setNewGameName('');
           fetchGames();
-          alert('गेम सफलता पूर्वक ऐड हो गया!');
+          window.focus();
+          setTimeout(() => {
+            document.getElementById('gameNameInput')?.focus();
+          }, 50);
         } else {
-          alert('Error: ' + (data.message || 'गेम ऐड नहीं हो सका'));
+          alert('Error: ' + (data.message || 'गेम ऐेेड नहीं हो सका'));
         }
       })
-      .catch(function(err) {
+      .catch(function (err) {
         console.error('Add Game Error:', err);
         alert('Server connection error!');
       });
   };
 
   // Delete Selected Game Handler
-  const handleDeleteGame = function() {
+  const handleDeleteGame = function () {
     if (!selectedGame) {
       alert('कृपया डिलीट करने के लिए गेम सिलेक्ट करें!');
       return;
@@ -67,11 +71,11 @@ export default function GameMaster() {
     const confirmDelete = window.confirm('क्या आप सच में ' + selectedGame.game_name + ' को डिलीट करना चाहते हैं?');
     if (!confirmDelete) return;
 
-    fetch('http://localhost:5000/api/games/' + selectedGame.game_id, {
+    fetch('https://yantri-desktop.onrender.com/api/games/' + selectedGame.game_id, {
       method: 'DELETE'
     })
-      .then(function(res) { return res.json(); })
-      .then(function(data) {
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
         if (data.success) {
           fetchGames();
           alert('गेम डिलीट कर दिया गया!');
@@ -79,7 +83,7 @@ export default function GameMaster() {
           alert('Error: ' + (data.message || 'गेम डिलीट नहीं हो सका'));
         }
       })
-      .catch(function(err) {
+      .catch(function (err) {
         console.error('Delete Game Error:', err);
         alert('Server connection error!');
       });
@@ -87,9 +91,9 @@ export default function GameMaster() {
 
   return (
     <div style={{ padding: '15px', background: '#dcdcdc', minHeight: '92vh', fontSize: '12px', fontFamily: 'Tahoma, Arial, sans-serif' }}>
-      
+
       <div style={{ width: '280px', border: '1px solid #7a96df', background: '#ece9d8', padding: '10px', boxShadow: '2px 2px 5px rgba(0,0,0,0.2)' }}>
-        
+
         <h3 style={{ textAlign: 'center', margin: '0 0 10px 0', background: '#0a246a', color: '#fff', padding: '4px', fontSize: '13px' }}>
           Game Master
         </h3>
@@ -99,16 +103,19 @@ export default function GameMaster() {
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             <span style={{ fontWeight: 'bold' }}>Name:</span>
             <input
+             id="gameNameInput"
+
               type="text"
               placeholder="e.g. NEW FB"
               value={newGameName}
-              onChange={function(e) { setNewGameName(e.target.value); }}
+              onChange={function (e) { setNewGameName(e.target.value); }}
               style={{ flex: 1, padding: '3px', border: '1px solid #7f9db9', textTransform: 'uppercase', fontWeight: 'bold' }}
             />
           </div>
 
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '4px' }}>
             <button
+
               onClick={handleAddGame}
               style={{ flex: 1, padding: '4px', background: '#ece9d8', border: '1px solid #777', fontWeight: 'bold', cursor: 'pointer', color: 'green' }}
             >
@@ -134,12 +141,12 @@ export default function GameMaster() {
             </thead>
             <tbody>
               {games.length > 0 ? (
-                games.map(function(g, idx) {
+                games.map(function (g, idx) {
                   const isSelected = selectedGame && selectedGame.game_id === g.game_id;
                   return (
                     <tr
                       key={g.game_id || idx}
-                      onClick={function() { setSelectedGame(g); }}
+                      onClick={function () { setSelectedGame(g); }}
                       style={{
                         background: isSelected ? '#0a246a' : (idx % 2 === 0 ? '#ffffff' : '#f4f4f4'),
                         color: isSelected ? '#ffffff' : '#000000',

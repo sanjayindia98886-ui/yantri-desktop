@@ -48,6 +48,14 @@ export default function MasterF5() {
 
   const [userSaleLog, setUserSaleLog] = useState([]);
 
+  // Helper to restore focus back to main Upload Date input
+  const restoreFocus = function() {
+    window.focus();
+    setTimeout(function() {
+      document.getElementById('f5UploadDateInput')?.focus();
+    }, 50);
+  };
+
   // Date Change Handlers
   const handleUploadDateChange = function(e) {
     const val = e.target.value;
@@ -80,7 +88,7 @@ export default function MasterF5() {
 
   const fetchGames = async function() {
     try {
-      const res = await axios.get('http://localhost:5000/api/games');
+      const res = await axios.get('https://yantri-desktop.onrender.com/api/games');
       if (res.data && res.data.success && Array.isArray(res.data.games)) {
         setGameList(res.data.games);
         if (res.data.games.length > 0) {
@@ -97,7 +105,7 @@ export default function MasterF5() {
 
   const fetchParties = async function() {
     try {
-      const res = await axios.get('http://localhost:5000/api/parties');
+      const res = await axios.get('https://yantri-desktop.onrender.com/api/parties');
       if (res.data) {
         setPartyList(Array.isArray(res.data) ? res.data : []);
       }
@@ -108,105 +116,181 @@ export default function MasterF5() {
 
   const handleUploadSale = async function() {
     try {
-      const res = await axios.post('http://localhost:5000/api/master/upload-sale', { date: uploadDate, game: uploadGame });
+      const res = await axios.post('https://yantri-desktop.onrender.com/api/master/upload-sale', { date: uploadDate, game: uploadGame });
       alert(res.data.message || 'Sale Upload Successful!');
-    } catch (err) { alert('Upload Sale failed!'); }
+      restoreFocus();
+    } catch (err) { 
+      alert('Upload Sale failed!'); 
+      restoreFocus();
+    }
   };
 
-  // MasterF5.jsx mein Upload Party wala Handler
-const handleUploadParty = async () => {
-  try {
-    // Check karein ki local storage ya state se parties list ja rahi hai
-    const response = await axios.post('http://localhost:5000/api/master/upload-party', {
-      parties: partyList // <--- Yahan 'parties' naam ki array honi zaroori hai
-    });
-    
-    if(response.data.status) {
-      alert('Party uploaded successfully!');
+  const handleUploadParty = async () => {
+    try {
+      const response = await axios.post('https://yantri-desktop.onrender.com/api/master/upload-party', {
+        parties: partyList
+      });
+      
+      if(response.data.status) {
+        alert('Party uploaded successfully!');
+        restoreFocus();
+      }
+    } catch (error) {
+      alert('Upload Party failed!');
+      restoreFocus();
     }
-  } catch (error) {
-    alert('Upload Party failed!');
-  }
-};
+  };
 
   const handleDownloadSale = async function() {
     try {
-      const res = await axios.post('http://localhost:5000/api/master/download-sale', { date: downloadDate, game: downloadGame });
+      const res = await axios.post('https://yantri-desktop.onrender.com/api/master/download-sale', { date: downloadDate, game: downloadGame });
       alert(res.data.message || 'Sale Download Completed!');
-    } catch (err) { alert('Download Sale failed!'); }
+      restoreFocus();
+    } catch (err) { 
+      alert('Download Sale failed!'); 
+      restoreFocus();
+    }
   };
 
   const handleDownloadParty = async function() {
     try {
-      const res = await axios.post('http://localhost:5000/api/master/download-party', { date: downloadDate, game: downloadGame });
+      const res = await axios.post('https://yantri-desktop.onrender.com/api/master/download-party', { date: downloadDate, game: downloadGame });
       alert(res.data.message || 'Party Accounts Downloaded Successfully!');
-    } catch (err) { alert('Download Party failed!'); }
+      restoreFocus();
+    } catch (err) { 
+      alert('Download Party failed!'); 
+      restoreFocus();
+    }
   };
 
   const handleDeleteDownloadedVouchers = async function() {
-    if (!canDelete) return alert('Access Denied: You do not have permission to delete vouchers.');
-    if (!window.confirm('Delete downloaded vouchers?')) return;
+    if (!canDelete) {
+      alert('Access Denied: You do not have permission to delete vouchers.');
+      restoreFocus();
+      return;
+    }
+    if (!window.confirm('Delete downloaded vouchers?')) {
+      restoreFocus();
+      return;
+    }
     try {
-      const res = await axios.post('http://localhost:5000/api/master/delete-downloaded-vouchers');
+      const res = await axios.post('https://yantri-desktop.onrender.com/api/master/delete-downloaded-vouchers');
       alert(res.data.message || 'Downloaded Vouchers Deleted!');
-    } catch (err) { alert('Delete failed!'); }
+      restoreFocus();
+    } catch (err) { 
+      alert('Delete failed!'); 
+      restoreFocus();
+    }
   };
 
   const handleDeleteWithOpening = async function() {
-    if (!canDelete) return alert('Access Denied: You do not have permission to delete.');
-    if (!deleteWithOpeningDate) return alert('Please enter Till Date!');
+    if (!canDelete) {
+      alert('Access Denied: You do not have permission to delete.');
+      restoreFocus();
+      return;
+    }
+    if (!deleteWithOpeningDate) {
+      alert('Please enter Till Date!');
+      restoreFocus();
+      return;
+    }
     const confirmMsg = 'Delete Sale With Opening till ' + deleteWithOpeningDate + '?';
-    if (!window.confirm(confirmMsg)) return;
+    if (!window.confirm(confirmMsg)) {
+      restoreFocus();
+      return;
+    }
     try {
-      const res = await axios.post('http://localhost:5000/api/master/delete-sale-with-opening', { tillDate: deleteWithOpeningDate });
+      const res = await axios.post('https://yantri-desktop.onrender.com/api/master/delete-sale-with-opening', { tillDate: deleteWithOpeningDate });
       alert(res.data.message);
-    } catch (err) { alert('Delete With Opening failed!'); }
+      restoreFocus();
+    } catch (err) { 
+      alert('Delete With Opening failed!'); 
+      restoreFocus();
+    }
   };
 
   const handleDeleteWithoutOpening = async function() {
-    if (!canDelete) return alert('Access Denied: You do not have permission to delete.');
-    if (!deleteWithoutOpeningTill) return alert('Please enter Till Date!');
-    if (!window.confirm('Delete Sale Without Opening?')) return;
+    if (!canDelete) {
+      alert('Access Denied: You do not have permission to delete.');
+      restoreFocus();
+      return;
+    }
+    if (!deleteWithoutOpeningTill) {
+      alert('Please enter Till Date!');
+      restoreFocus();
+      return;
+    }
+    if (!window.confirm('Delete Sale Without Opening?')) {
+      restoreFocus();
+      return;
+    }
     try {
-      const res = await axios.post('http://localhost:5000/api/master/delete-sale-without-opening', {
+      const res = await axios.post('https://yantri-desktop.onrender.com/api/master/delete-sale-without-opening', {
         type: deleteWithoutOpeningType,
         tillDate: deleteWithoutOpeningTill,
         partyId: selectedParty
       });
       alert(res.data.message);
-    } catch (err) { alert('Delete Sale failed!'); }
+      restoreFocus();
+    } catch (err) { 
+      alert('Delete Sale failed!'); 
+      restoreFocus();
+    }
   };
 
   const handleDeleteAccount = async function() {
-    if (!canDelete) return alert('Access Denied: You do not have permission to delete account.');
-    if (deleteWithoutOpeningType === 'Selected Party' && !selectedParty) return alert('Please choose a Party!');
-    if (!window.confirm('Are you sure you want to delete account(s)?')) return;
+    if (!canDelete) {
+      alert('Access Denied: You do not have permission to delete account.');
+      restoreFocus();
+      return;
+    }
+    if (deleteWithoutOpeningType === 'Selected Party' && !selectedParty) {
+      alert('Please choose a Party!');
+      restoreFocus();
+      return;
+    }
+    if (!window.confirm('Are you sure you want to delete account(s)?')) {
+      restoreFocus();
+      return;
+    }
     try {
-      const res = await axios.post('http://localhost:5000/api/master/delete-account', {
+      const res = await axios.post('https://yantri-desktop.onrender.com/api/master/delete-account', {
         type: deleteWithoutOpeningType,
         partyId: selectedParty
       });
       alert(res.data.message);
-    } catch (err) { alert('Delete Account failed!'); }
+      restoreFocus();
+    } catch (err) { 
+      alert('Delete Account failed!'); 
+      restoreFocus();
+    }
   };
 
   const handleFindUserSale = async function() {
     try {
-      const res = await axios.get('http://localhost:5000/api/master/user-sale-summary', {
+      const res = await axios.get('https://yantri-desktop.onrender.com/api/master/user-sale-summary', {
         params: { type: userSaleType, date: userSaleDate, game: userSaleGame }
       });
       setUserSaleSummary(res.data.summary || []);
       setTotalUserSaleAmount(res.data.totalAmount || '0.0');
-    } catch (err) { alert('Error fetching user sale!'); }
+      restoreFocus();
+    } catch (err) { 
+      alert('Error fetching user sale!'); 
+      restoreFocus();
+    }
   };
 
   const handleFindUploadLogs = async function() {
     try {
-      const res = await axios.get('http://localhost:5000/api/master/user-sale-logs', {
+      const res = await axios.get('https://yantri-desktop.onrender.com/api/master/user-sale-logs', {
         params: { date: uploadLogDate }
       });
       setUserSaleLog(res.data.logs || []);
-    } catch (err) { alert('Error fetching upload logs!'); }
+      restoreFocus();
+    } catch (err) { 
+      alert('Error fetching upload logs!'); 
+      restoreFocus();
+    }
   };
 
   const panelBoxStyle = {
@@ -228,21 +312,28 @@ const handleUploadParty = async () => {
   };
 
   return (
-    <div style={{ padding: '8px', background: '#dcdcdc', minHeight: '93vh', fontSize: '11px', fontFamily: 'Tahoma, Arial, sans-serif', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div style={{ padding: '8px', background: '#dcdcdc', minHeight: '93vh', fontSize: '11px', fontFamily: '"Segoe UI", Tahoma, Arial, sans-serif', display: 'flex', flexDirection: 'column', gap: '8px' }}>
       
       {/* Top Panel - Dynamic Columns Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: isAdmin ? '1.1fr 1.2fr 1.3fr 1.4fr' : '1fr 1fr 1.4fr', gap: '8px' }}>
         
         {/* Box 1: Server Upload Section */}
         <div style={panelBoxStyle}>
-          <strong style={{ color: '#000' }}>
+          <strong style={{ color: '#000', fontSize: '12px' }}>
             {isAdmin ? 'Server Upload' : 'Server Upload-Sale'}
           </strong>
-          <div style={{ marginTop: '12px' }}>
-            Date: <input type="text" value={uploadDate} onChange={handleUploadDateChange} style={{ width: '85px', padding: '1px 3px' }} />
+          <div style={{ marginTop: '12px', fontWeight: 'bold' }}>
+            Date: <input 
+              id="f5UploadDateInput"
+              type="text" 
+              value={uploadDate} 
+              onChange={handleUploadDateChange} 
+              autoFocus
+              style={{ width: '85px', padding: '1px 3px', fontWeight: 'bold', textAlign: 'center' }} 
+            />
           </div>
-          <div style={{ marginTop: '6px' }}>
-            Game: <select value={uploadGame} onChange={function(e) { setUploadGame(e.target.value); }} style={{ width: '90px' }}>
+          <div style={{ marginTop: '6px', fontWeight: 'bold' }}>
+            Game: <select value={uploadGame} onChange={function(e) { setUploadGame(e.target.value); }} style={{ width: '90px', fontWeight: 'bold' }}>
               {gameList.length > 0 ? (
                 gameList.map(function(g) {
                   const gName = g.game_name || g;
@@ -254,12 +345,12 @@ const handleUploadParty = async () => {
             </select>
           </div>
 
-          <button onClick={handleUploadSale} style={{ marginTop: '16px', width: '100%', padding: '4px' }}>
+          <button onClick={handleUploadSale} style={{ marginTop: '16px', width: '100%', padding: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>
             Upload Sale
           </button>
           
           {isAdmin && (
-            <button onClick={handleUploadParty} style={{ marginTop: '10px', width: '100%', padding: '4px' }}>
+            <button onClick={handleUploadParty} style={{ marginTop: '10px', width: '100%', padding: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>
               Upload Party
             </button>
           )}
@@ -267,14 +358,14 @@ const handleUploadParty = async () => {
 
         {/* Box 2: Server Download Section */}
         <div style={panelBoxStyle}>
-          <strong style={{ color: '#000' }}>
+          <strong style={{ color: '#000', fontSize: '12px' }}>
             {isAdmin ? 'Server Download-Sale' : 'Server Download-Party'}
           </strong>
-          <div style={{ marginTop: '12px' }}>
-            Date: <input type="text" value={downloadDate} onChange={handleDownloadDateChange} style={{ width: '85px', padding: '1px 3px' }} />
+          <div style={{ marginTop: '12px', fontWeight: 'bold' }}>
+            Date: <input type="text" value={downloadDate} onChange={handleDownloadDateChange} style={{ width: '85px', padding: '1px 3px', fontWeight: 'bold', textAlign: 'center' }} />
           </div>
-          <div style={{ marginTop: '6px' }}>
-            Game: <select value={downloadGame} onChange={function(e) { setDownloadGame(e.target.value); }} style={{ width: '90px' }}>
+          <div style={{ marginTop: '6px', fontWeight: 'bold' }}>
+            Game: <select value={downloadGame} onChange={function(e) { setDownloadGame(e.target.value); }} style={{ width: '90px', fontWeight: 'bold' }}>
               {gameList.length > 0 ? (
                 gameList.map(function(g) {
                   const gName = g.game_name || g;
@@ -287,13 +378,13 @@ const handleUploadParty = async () => {
           </div>
 
           {isAdmin && (
-            <button onClick={handleDownloadSale} style={{ marginTop: '16px', width: '100%', padding: '4px' }}>
+            <button onClick={handleDownloadSale} style={{ marginTop: '16px', width: '100%', padding: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>
               Download Sale
             </button>
           )}
 
           {isUser && (
-            <button onClick={handleDownloadParty} style={{ marginTop: '16px', width: '100%', padding: '4px' }}>
+            <button onClick={handleDownloadParty} style={{ marginTop: '16px', width: '100%', padding: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>
               Download Party
             </button>
           )}
@@ -310,16 +401,16 @@ const handleUploadParty = async () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             
             <div style={panelBoxStyle}>
-              <strong>Delete Sale With Opening</strong>
-              <div style={{ marginTop: '6px' }}>
-                Till Date: <input type="text" placeholder="//" value={deleteWithOpeningDate} onChange={function(e) { setDeleteWithOpeningDate(e.target.value); }} style={{ width: '85px' }} />
+              <strong style={{ fontSize: '12px' }}>Delete Sale With Opening</strong>
+              <div style={{ marginTop: '6px', fontWeight: 'bold' }}>
+                Till Date: <input type="text" placeholder="//" value={deleteWithOpeningDate} onChange={function(e) { setDeleteWithOpeningDate(e.target.value); }} style={{ width: '85px', fontWeight: 'bold', textAlign: 'center' }} />
               </div>
               <button onClick={handleDeleteWithOpening} disabled={!canDelete} style={{ ...maroonBtnStyle, marginTop: '8px', width: '100%' }}>Delete Sale With Opening</button>
             </div>
 
             <div style={panelBoxStyle}>
-              <strong>Delete Sale Without Opening</strong>
-              <div style={{ marginTop: '6px' }}>
+              <strong style={{ fontSize: '12px' }}>Delete Sale Without Opening</strong>
+              <div style={{ marginTop: '6px', fontWeight: 'bold' }}>
                 <label><input type="radio" name="dso" checked={deleteWithoutOpeningType === 'All'} onChange={function() { setDeleteWithoutOpeningType('All'); }} /> All</label>
                 <label style={{ marginLeft: '12px' }}>
                   <input 
@@ -333,11 +424,11 @@ const handleUploadParty = async () => {
                   /> Selected Party
                 </label>
               </div>
-              <div style={{ marginTop: '6px' }}>
-                Till Date: <input type="text" placeholder="//" value={deleteWithoutOpeningTill} onChange={function(e) { setDeleteWithoutOpeningTill(e.target.value); }} style={{ width: '75px' }} />
+              <div style={{ marginTop: '6px', fontWeight: 'bold' }}>
+                Till Date: <input type="text" placeholder="//" value={deleteWithoutOpeningTill} onChange={function(e) { setDeleteWithoutOpeningTill(e.target.value); }} style={{ width: '75px', fontWeight: 'bold', textAlign: 'center' }} />
               </div>
-              <div style={{ marginTop: '6px' }}>
-                Party: <select value={selectedParty} onChange={function(e) { setSelectedParty(e.target.value); }} style={{ width: '110px' }}>
+              <div style={{ marginTop: '6px', fontWeight: 'bold' }}>
+                Party: <select value={selectedParty} onChange={function(e) { setSelectedParty(e.target.value); }} style={{ width: '110px', fontWeight: 'bold' }}>
                   <option value="">-- Choose --</option>
                   {partyList.map(function(p) {
                     const partyId = p.pno || p.Pno || p.id;
@@ -357,18 +448,18 @@ const handleUploadParty = async () => {
           </div>
         )}
 
-        {/* Box 4: User Sale Summary Table (Ab Admin Aur User Dono Ko Dikhega) */}
+        {/* Box 4: User Sale Summary Table */}
         <div style={panelBoxStyle}>
-          <div style={{ textAlign: 'center', fontWeight: 'bold' }}>User Sale</div>
-          <div style={{ marginTop: '4px', textAlign: 'center' }}>
+          <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '12px' }}>User Sale</div>
+          <div style={{ marginTop: '4px', textAlign: 'center', fontWeight: 'bold' }}>
             <label><input type="radio" name="ust" checked={userSaleType === 'Local'} onChange={function() { setUserSaleType('Local'); }} /> Local</label>
             <label style={{ marginLeft: '15px' }}><input type="radio" name="ust" checked={userSaleType === 'Server'} onChange={function() { setUserSaleType('Server'); }} /> Server</label>
           </div>
-          <div style={{ marginTop: '6px' }}>
-            Date: <input type="text" value={userSaleDate} onChange={handleUserSaleDateChange} style={{ width: '80px' }} />
+          <div style={{ marginTop: '6px', fontWeight: 'bold' }}>
+            Date: <input type="text" value={userSaleDate} onChange={handleUserSaleDateChange} style={{ width: '80px', fontWeight: 'bold', textAlign: 'center' }} />
           </div>
-          <div style={{ marginTop: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Game: <select value={userSaleGame} onChange={function(e) { setUserSaleGame(e.target.value); }} style={{ width: '90px' }}>
+          <div style={{ marginTop: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold' }}>
+            <span>Game: <select value={userSaleGame} onChange={function(e) { setUserSaleGame(e.target.value); }} style={{ width: '90px', fontWeight: 'bold' }}>
               {gameList.length > 0 ? (
                 gameList.map(function(g) {
                   const gName = g.game_name || g;
@@ -378,13 +469,13 @@ const handleUploadParty = async () => {
                 <option value="GB">GB</option>
               )}
             </select></span>
-            <button onClick={handleFindUserSale} style={{ padding: '2px 12px' }}>Find</button>
+            <button onClick={handleFindUserSale} style={{ padding: '2px 12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>Find</button>
           </div>
 
           <div style={{ marginTop: '8px', height: '170px', overflowY: 'auto', background: '#fff', border: '1px solid #7f9db9' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
               <thead>
-                <tr style={{ background: '#ece9d8', borderBottom: '1px solid #acd' }}>
+                <tr style={{ background: '#ece9d8', borderBottom: '1px solid #acd', fontWeight: 'bold' }}>
                   <th style={{ padding: '2px 5px', borderRight: '1px solid #ccc' }}>UserId</th>
                   <th style={{ padding: '2px 5px' }}>Amount</th>
                 </tr>
@@ -393,14 +484,14 @@ const handleUploadParty = async () => {
                 {userSaleSummary.length > 0 ? (
                   userSaleSummary.map(function(item, idx) {
                     return (
-                      <tr key={idx} style={{ background: idx === 0 ? '#004080' : 'transparent', color: idx === 0 ? '#fff' : '#000' }}>
+                      <tr key={idx} style={{ background: idx === 0 ? '#004080' : 'transparent', color: idx === 0 ? '#fff' : '#000', fontWeight: 'bold' }}>
                         <td style={{ padding: '2px 5px', borderRight: '1px solid #eee' }}>{item.userId}</td>
                         <td style={{ padding: '2px 5px' }}>{item.amount}</td>
                       </tr>
                     );
                   })
                 ) : (
-                  <tr><td colSpan="2" style={{ textAlign: 'center', padding: '10px', color: '#888' }}>No data found</td></tr>
+                  <tr><td colSpan="2" style={{ textAlign: 'center', padding: '10px', color: '#888', fontWeight: 'bold' }}>No data found</td></tr>
                 )}
               </tbody>
             </table>
@@ -418,23 +509,23 @@ const handleUploadParty = async () => {
         {/* Delete Server Panel: Sirf Admin Ko Dikhega */}
         {isAdmin && (
           <div style={{ width: '220px', ...panelBoxStyle }}>
-            <strong>Delete Server</strong>
+            <strong style={{ fontSize: '12px' }}>Delete Server</strong>
             <button disabled={!canDelete} style={{ ...maroonBtnStyle, marginTop: '20px', width: '100%', padding: '6px' }}>Delete Sale</button>
           </div>
         )}
 
-        {/* User Sale Upload Time Table: Admin Aur User Dono Ko Dikhega */}
+        {/* User Sale Upload Time Table */}
         <div style={{ flex: 1, ...panelBoxStyle }}>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', alignItems: 'center', fontWeight: 'bold' }}>
             <strong style={{ color: '#800000', fontSize: '12px' }}>User Sale Upload Time</strong>
-            <span>Date: <input type="text" value={uploadLogDate} onChange={handleUploadLogDateChange} style={{ width: '85px' }} /></span>
-            <button onClick={handleFindUploadLogs} style={{ padding: '2px 14px' }}>Find</button>
+            <span>Date: <input type="text" value={uploadLogDate} onChange={handleUploadLogDateChange} style={{ width: '85px', fontWeight: 'bold', textAlign: 'center' }} /></span>
+            <button onClick={handleFindUploadLogs} style={{ padding: '2px 14px', fontWeight: 'bold', cursor: 'pointer', fontSize: '11px' }}>Find</button>
           </div>
 
           <div style={{ marginTop: '8px', height: '140px', overflowY: 'auto', background: '#fff', border: '1px solid #7f9db9' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px' }}>
               <thead>
-                <tr style={{ background: '#ece9d8', borderBottom: '1px solid #ccc' }}>
+                <tr style={{ background: '#ece9d8', borderBottom: '1px solid #ccc', fontWeight: 'bold' }}>
                   <th style={{ padding: '3px 6px', borderRight: '1px solid #ccc' }}>SaleDate</th>
                   <th style={{ padding: '3px 6px', borderRight: '1px solid #ccc' }}>Shift</th>
                   <th style={{ padding: '3px 6px', borderRight: '1px solid #ccc' }}>UserID</th>
@@ -445,7 +536,7 @@ const handleUploadParty = async () => {
                 {userSaleLog.length > 0 ? (
                   userSaleLog.map(function(log, idx) {
                     return (
-                      <tr key={idx} style={{ background: idx === 0 ? '#004080' : 'transparent', color: idx === 0 ? '#fff' : '#000' }}>
+                      <tr key={idx} style={{ background: idx === 0 ? '#004080' : 'transparent', color: idx === 0 ? '#fff' : '#000', fontWeight: 'bold' }}>
                         <td style={{ padding: '2px 6px', borderRight: '1px solid #eee' }}>{log.saleDate}</td>
                         <td style={{ padding: '2px 6px', borderRight: '1px solid #eee' }}>{log.shift}</td>
                         <td style={{ padding: '2px 6px', borderRight: '1px solid #eee' }}>{log.userId}</td>
@@ -454,7 +545,7 @@ const handleUploadParty = async () => {
                     );
                   })
                 ) : (
-                  <tr><td colSpan="4" style={{ textAlign: 'center', padding: '10px', color: '#888' }}>No logs found</td></tr>
+                  <tr><td colSpan="4" style={{ textAlign: 'center', padding: '10px', color: '#888', fontWeight: 'bold' }}>No logs found</td></tr>
                 )}
               </tbody>
             </table>

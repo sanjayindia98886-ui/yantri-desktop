@@ -23,7 +23,7 @@ export default function Login() {
     setErrorMsg('');
 
     try {
-      const res = await axios.post('http://localhost:5000/api/access/login', {
+      const res = await axios.post('https://yantri-desktop.onrender.com/api/access/login', {
         username: username.trim(),
         password: password.trim()
       });

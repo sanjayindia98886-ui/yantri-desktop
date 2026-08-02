@@ -55,6 +55,14 @@ export default function YantriF4() {
 
   const [isProfitLossOpen, setIsProfitLossOpen] = useState(false);
 
+  // Helper to restore focus back to Date input
+  const restoreFocus = function() {
+    window.focus();
+    setTimeout(function() {
+      document.getElementById('f4DateInput')?.focus();
+    }, 50);
+  };
+
   useEffect(function() {
     fetchGames();
     fetchParties();
@@ -67,7 +75,7 @@ export default function YantriF4() {
   }, []);
 
   const fetchUsersList = function() {
-    fetch('http://localhost:5000/api/access/users')
+    fetch('https://yantri-desktop.onrender.com/api/access/users')
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (Array.isArray(data)) {
@@ -79,7 +87,7 @@ export default function YantriF4() {
 
   const fetchGames = async function() {
     try {
-      const res = await axios.get('http://localhost:5000/api/games');
+      const res = await axios.get('https://yantri-desktop.onrender.com/api/games');
       if (res.data && res.data.success && Array.isArray(res.data.games)) {
         setGameList(res.data.games);
         
@@ -96,7 +104,7 @@ export default function YantriF4() {
   };
 
   const fetchParties = function() {
-    fetch('http://localhost:5000/api/parties')
+    fetch('https://yantri-desktop.onrender.com/api/parties')
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (Array.isArray(data)) {
@@ -112,7 +120,7 @@ export default function YantriF4() {
     const currentUserId = (user && user.id) ? user.id : '1';
     const currentUserRole = (user && user.role) ? user.role : 'user';
 
-    const url = 'http://localhost:5000/api/yantri/grid?date=' + encodeURIComponent(date) + 
+    const url = 'https://yantri-desktop.onrender.com/api/yantri/grid?date=' + encodeURIComponent(date) + 
       '&game=' + encodeURIComponent(game) + 
       '&party=' + encodeURIComponent(party) + 
       '&type=' + encodeURIComponent(yantriType) +
@@ -130,8 +138,12 @@ export default function YantriF4() {
           setGridData({});
           setGrandTotal(0);
         }
+        restoreFocus();
       })
-      .catch(function(err) { console.error('Error fetching yantri grid:', err); });
+      .catch(function(err) { 
+        console.error('Error fetching yantri grid:', err); 
+        restoreFocus();
+      });
   };
 
   const formatNumStr = function(num) {
@@ -296,7 +308,7 @@ export default function YantriF4() {
     const targetAmt = Number(highAmtVal);
     if (!targetAmt) return;
 
-    const url = 'http://localhost:5000/api/yantri/trace-client?date=' + encodeURIComponent(date) + 
+    const url = 'https://yantri-desktop.onrender.com/api/yantri/trace-client?date=' + encodeURIComponent(date) + 
       '&game=' + encodeURIComponent(game) + 
       '&amt=' + encodeURIComponent(targetAmt);
 
@@ -382,13 +394,20 @@ export default function YantriF4() {
   const minVal = profitLossData.minVal;
 
   return (
-    <div style={{ padding: '4px', background: '#d4d0c8', height: '88vh', maxHeight: '88vh', fontSize: '11px', fontFamily: 'Tahoma, Arial, sans-serif', display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
+    <div style={{ padding: '4px', background: '#d4d0c8', height: '88vh', maxHeight: '88vh', fontSize: '11px', fontFamily: '"Segoe UI", Tahoma, Arial, sans-serif', display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
       
       {/* Top Controls Bar */}
       <div style={{ display: 'flex', gap: '6px', background: '#d4d0c8', padding: '3px 6px', border: '1px solid #808080', alignItems: 'center', flexShrink: 0 }}>
         <div>
           <span style={{ fontWeight: 'bold' }}>Date: </span>
-          <input type="text" value={date} onChange={function(e) { setDate(e.target.value); }} style={{ width: '75px', fontSize: '11px', fontWeight: 'bold', border: '1px solid #7f9db9', padding: '1px 3px', background: '#fff' }} />
+          <input 
+            id="f4DateInput"
+            type="text" 
+            value={date} 
+            onChange={function(e) { setDate(e.target.value); }} 
+            autoFocus
+            style={{ width: '75px', fontSize: '11px', fontWeight: 'bold', border: '1px solid #7f9db9', padding: '1px 3px', background: '#fff', textAlign: 'center' }} 
+          />
         </div>
 
         <div>
@@ -581,7 +600,7 @@ export default function YantriF4() {
             </div>
           </div>
 
-          {/* Bottom Control Panel (High Color CLEAR FIND & High Amt FIND Both Visible) */}
+          {/* Bottom Control Panel */}
           <div style={{ display: 'flex', gap: '3px', alignItems: 'stretch' }}>
             
             {/* Round off & Copy */}
@@ -677,7 +696,7 @@ export default function YantriF4() {
               </button>
             </div>
 
-            {/* 1. High Color Box (Highlight Numbers) */}
+            {/* 1. High Color Box */}
             <div style={{ background: '#d4d0c8', border: '1px solid #808080', padding: '2px', width: '95px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <strong style={{ fontSize: '9px' }}>High Color</strong>
               <div>
@@ -703,7 +722,7 @@ export default function YantriF4() {
               </button>
             </div>
 
-            {/* 2. High Amt Box (Find Party Account) */}
+            {/* 2. High Amt Box */}
             <div style={{ background: '#d4d0c8', border: '1px solid #808080', padding: '2px', width: '95px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <strong style={{ fontSize: '9px' }}>High Amt</strong>
               <div>

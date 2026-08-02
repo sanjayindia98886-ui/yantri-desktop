@@ -35,6 +35,14 @@ export default function BalanceHistoryF8() {
   const balWrapperRef = useRef(null);
   const saleWrapperRef = useRef(null);
 
+  // Helper to restore focus back to Date input
+  const restoreFocus = function() {
+    window.focus();
+    setTimeout(function() {
+      document.getElementById('f8FromDateInput')?.focus();
+    }, 50);
+  };
+
   // Global Keyboard Arrow Navigation for ALL THREE TABLES
   useEffect(function() {
     function handleKeyDown(e) {
@@ -97,7 +105,7 @@ export default function BalanceHistoryF8() {
     const checkHissa = overrideWithoutHissa !== undefined ? overrideWithoutHissa : withoutHissa;
     setLoading(true);
     try {
-      const url = 'http://localhost:5000/api/balance-history?fromDate=' + fromDate + '&toDate=' + toDate + '&withoutHissa=' + checkHissa;
+      const url = 'https://yantri-desktop.onrender.com/api/balance-history?fromDate=' + fromDate + '&toDate=' + toDate + '&withoutHissa=' + checkHissa;
       const response = await fetch(url);
       const data = await response.json();
       if (data.success) {
@@ -114,9 +122,11 @@ export default function BalanceHistoryF8() {
           setSelectedBalIndex(0);
           setSelectedSaleIndex(0);
         }
+        restoreFocus();
       }
     } catch (error) {
       console.error('Error fetching balance history:', error);
+      restoreFocus();
     } finally {
       setLoading(false);
     }
@@ -140,19 +150,19 @@ export default function BalanceHistoryF8() {
 
   const cssStyles = 
     ".f8-container { padding: 4px; background-color: #d0d5dd; height: 95vh; font-size: 10px; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; display: flex; flex-direction: column; box-sizing: border-box; outline: none; }\n" +
-    ".filter-bar { display: flex; gap: 8px; align-items: center; background: #e0e5eb; padding: 3px 6px; border: 1px solid #999; margin-bottom: 4px; font-size: 11px; }\n" +
+    ".filter-bar { display: flex; gap: 8px; align-items: center; background: #e0e5eb; padding: 3px 6px; border: 1px solid #999; margin-bottom: 4px; font-size: 11px; font-weight: bold; }\n" +
     ".table-wrapper { flex: 1; background: #ffffff; border: 1px solid #777; overflow: auto; margin-bottom: 4px; position: relative; }\n" +
     ".table-wrapper.blank-screen { background: #5478a0; }\n" +
     ".history-table { width: 100%; border-collapse: collapse; text-align: right; font-size: 10px; background: #ffffff; }\n" +
     ".history-table th { background-color: #e0e0e0; border: 1px solid #888; padding: 2px 4px; position: sticky; top: 0; z-index: 2; font-weight: bold; text-align: center; color: #000; font-size: 10px; height: 20px; }\n" +
-    ".history-table td { border: 1px solid #a0a0a0; padding: 2px 4px; vertical-align: top; white-space: nowrap; font-size: 10px; cursor: pointer; }\n" +
+    ".history-table td { border: 1px solid #a0a0a0; padding: 2px 4px; vertical-align: top; white-space: nowrap; font-size: 10px; cursor: pointer; color: #000; font-weight: bold; }\n" +
     ".history-table tr:hover { background-color: #e5f1fb; }\n" +
     ".history-table tr.selected-row { background-color: #0078d7 !important; color: #ffffff !important; }\n" +
     ".history-table tr.selected-row td { color: #ffffff !important; background-color: #0078d7 !important; }\n" +
     ".pname-col { text-align: left !important; font-weight: bold; background: #eaeaea; width: 110px; color: #000; vertical-align: top !important; padding-top: 3px !important; }\n" +
     ".line-empty { height: 13px; }\n" +
-    ".line-sale { height: 13px; font-weight: normal; }\n" +
-    ".line-bal { height: 13px; font-weight: normal; }\n" +
+    ".line-sale { height: 13px; font-weight: bold; }\n" +
+    ".line-bal { height: 13px; font-weight: bold; }\n" +
     ".line-win { font-size: 9px; font-weight: bold; height: 13px; }\n" +
     ".split-grids { display: flex; gap: 6px; height: 200px; }\n" +
     ".bottom-card { flex: 1; border: 1px solid #888; background: #e8e8e8; padding: 2px; display: flex; flex-direction: column; }\n" +
@@ -160,7 +170,7 @@ export default function BalanceHistoryF8() {
     ".bottom-box { flex: 1; background: #ffffff; border: 1px solid #777; overflow-y: auto; }\n" +
     ".bottom-box.blank-screen { background: #5478a0; }\n" +
     ".bottom-table { width: 100%; border-collapse: collapse; background: #ffffff; font-size: 10px; }\n" +
-    ".bottom-table th, .bottom-table td { border: 1px solid #a0a0a0; padding: 2px 5px; line-height: 1.25; font-size: 10px; cursor: pointer; }\n" +
+    ".bottom-table th, .bottom-table td { border: 1px solid #a0a0a0; padding: 2px 5px; line-height: 1.25; font-size: 10px; cursor: pointer; font-weight: bold; }\n" +
     ".bottom-table th { background: #dcdcdc; text-align: left; position: sticky; top: 0; font-weight: bold; }\n" +
     ".bottom-table tr:hover { background-color: #e5f1fb; }\n" +
     ".bottom-table tr.selected-row { background-color: #0078d7 !important; color: #ffffff !important; }\n" +
@@ -181,18 +191,18 @@ export default function BalanceHistoryF8() {
       {/* Top Filter Bar */}
       <div className="filter-bar">
         <span>Type: </span>
-        <select value={balanceType} onChange={(e) => setBalanceType(e.target.value)}>
+        <select value={balanceType} onChange={(e) => setBalanceType(e.target.value)} style={{ fontWeight: 'bold' }}>
           <option value="/ Daily Balance / Win">/ Daily Balance / Win</option>
         </select>
 
-        <span>Date: <input type="text" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={{ width: '75px', textAlign: 'center' }} /></span>
-        <span>To: <input type="text" value={toDate} onChange={(e) => setToDate(e.target.value)} style={{ width: '75px', textAlign: 'center' }} /></span>
+        <span>Date: <input id="f8FromDateInput" type="text" value={fromDate} onChange={(e) => setFromDate(e.target.value)} autoFocus style={{ width: '75px', textAlign: 'center', fontWeight: 'bold' }} /></span>
+        <span>To: <input type="text" value={toDate} onChange={(e) => setToDate(e.target.value)} style={{ width: '75px', textAlign: 'center', fontWeight: 'bold' }} /></span>
 
         <button onClick={handleShowClick} style={{ padding: '1px 12px', cursor: 'pointer', fontWeight: 'bold' }}>
           {loading ? 'Loading...' : 'Show'}
         </button>
 
-        <label style={{ marginLeft: '8px', cursor: 'pointer' }}>
+        <label style={{ marginLeft: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
           <input type="checkbox" checked={withoutHissa} onChange={handleWithoutHissaChange} /> Without Hissa
         </label>
       </div>
@@ -347,7 +357,7 @@ export default function BalanceHistoryF8() {
 
         {/* Action Buttons */}
         <div className="action-btns" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '2px' }}>
-          <span style={{ fontSize: '10px', textAlign: 'center', color: '#555' }}>Ctrl+P</span>
+          <span style={{ fontSize: '10px', textAlign: 'center', color: '#555', fontWeight: 'bold' }}>Ctrl+P</span>
           <button onClick={handlePrint} style={{ padding: '4px 14px', cursor: 'pointer', fontWeight: 'bold' }}>Print</button>
         </div>
 

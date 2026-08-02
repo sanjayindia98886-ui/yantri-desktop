@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { usePermission } from '../context/PermissionContext';
 
 const TAB_PERMISSIONS = [
   { key: 'f1_party', label: 'Party (F1)' },
@@ -36,6 +37,8 @@ const defaultPermissions = {
 };
 
 export default function AccessControl() {
+  const { fetchPermissions } = usePermission();
+
   const [users, setUsers] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [userPermissions, setUserPermissions] = useState(defaultPermissions);
@@ -43,8 +46,15 @@ export default function AccessControl() {
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
+  const usernameInputRef = useRef(null);
+  const userSelectRef = useRef(null);
+
+  const isChecked = (val) => {
+    return Number(val) === 1 || val === true || val === '1';
+  };
+
   const fetchUsers = () => {
-    fetch('http://localhost:5000/api/access/users')
+    fetch('https://yantri-desktop.onrender.com/api/access/users')
       .then((res) => res.json())
       .then((data) => setUsers(data || []))
       .catch((err) => console.error('Fetch users error:', err));
@@ -54,32 +64,35 @@ export default function AccessControl() {
     fetchUsers();
   }, []);
 
+  const loadUserPermissions = (userId) => {
+    if (!userId) return;
+    fetch('https://yantri-desktop.onrender.com/api/access/permissions/' + userId)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data) {
+          const normalized = { ...defaultPermissions };
+          Object.keys(data).forEach((key) => {
+            normalized[key] = isChecked(data[key]) ? 1 : (data[key] === 0 || data[key] === '0' || data[key] === false) ? 0 : data[key];
+          });
+          setUserPermissions(normalized);
+        }
+      })
+      .catch((err) => console.error('Error fetching permissions:', err));
+  };
+
   const handleUserSelect = (userId) => {
     setSelectedUserId(userId);
     if (!userId) {
       setUserPermissions(defaultPermissions);
       return;
     }
-    fetch('http://localhost:5000/api/access/permissions/' + userId)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data) {
-          // डेटाबेस से आए डाटा को डिफ़ॉल्ट के साथ मिलाना
-          setUserPermissions({
-            ...defaultPermissions,
-            ...data
-          });
-        } else {
-          setUserPermissions(defaultPermissions);
-        }
-      })
-      .catch((err) => console.error('Fetch permissions error:', err));
+    loadUserPermissions(userId);
   };
 
   const handleCheckboxChange = (key) => {
     setUserPermissions((prev) => ({
       ...prev,
-      [key]: prev[key] === 1 || prev[key] === true ? 0 : 1
+      [key]: isChecked(prev[key]) ? 0 : 1
     }));
   };
 
@@ -92,13 +105,29 @@ export default function AccessControl() {
 
   const handleSavePermissions = () => {
     if (!selectedUserId) return;
-    fetch('http://localhost:5000/api/access/permissions/' + selectedUserId, {
+
+    const payload = { ...userPermissions };
+    TAB_PERMISSIONS.forEach((item) => {
+      payload[item.key] = isChecked(payload[item.key]) ? 1 : 0;
+    });
+    payload.can_edit_party = isChecked(payload.can_edit_party) ? 1 : 0;
+    payload.can_delete_voucher = isChecked(payload.can_delete_voucher) ? 1 : 0;
+
+    fetch('https://yantri-desktop.onrender.com/api/access/permissions/' + selectedUserId, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userPermissions)
+      body: JSON.stringify(payload)
     })
       .then((res) => res.json())
-      .then(() => alert('User permissions updated successfully!'))
+      .then(() => {
+        alert('User permissions updated successfully!');
+        
+        // ताज़ा डेटाबेस से लोड करें और पूरे ऐप Context में सिंक करें
+        loadUserPermissions(selectedUserId);
+        if (fetchPermissions) {
+          fetchPermissions(selectedUserId);
+        }
+      })
       .catch((err) => console.error('Save permissions error:', err));
   };
 
@@ -109,7 +138,7 @@ export default function AccessControl() {
       return;
     }
 
-    fetch('http://localhost:5000/api/access/users', {
+    fetch('https://yantri-desktop.onrender.com/api/access/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -133,30 +162,31 @@ export default function AccessControl() {
   };
 
   return (
-    <div style={{ padding: '20px', background: '#ece9d8', minHeight: '90vh', fontFamily: 'Tahoma, Arial, sans-serif' }}>
-      <h2 style={{ margin: '0 0 15px 0', color: '#0a246a' }}>Super Admin - User Access Control</h2>
+    <div style={{ padding: '20px', background: '#ece9d8', minHeight: '90vh', fontFamily: '"Segoe UI", Tahoma, Arial, sans-serif' }}>
+      <h2 style={{ margin: '0 0 15px 0', color: '#0a246a', fontWeight: 'bold' }}>Super Admin - User Access Control</h2>
       
       {/* Add New User */}
       <div style={{ background: '#fff', padding: '15px', border: '1px solid #7a96df', marginBottom: '20px', maxWidth: '600px' }}>
-        <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#000' }}>➕ Add New User</h3>
+        <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#000', fontWeight: 'bold' }}>➕ Add New User</h3>
         <form onSubmit={handleCreateUser} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <input
+            ref={usernameInputRef}
             type="text"
             placeholder="Username"
             value={newUsername}
             onChange={(e) => setNewUsername(e.target.value)}
-            style={{ padding: '4px 8px', border: '1px solid #7f9db9' }}
+            style={{ padding: '4px 8px', border: '1px solid #7f9db9', fontWeight: 'bold' }}
           />
           <input
             type="password"
             placeholder="Password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            style={{ padding: '4px 8px', border: '1px solid #7f9db9' }}
+            style={{ padding: '4px 8px', border: '1px solid #7f9db9', fontWeight: 'bold' }}
           />
           <button
             type="submit"
-            style={{ padding: '4px 12px', background: '#28a745', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
+            style={{ padding: '4px 12px', background: '#28a745', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}
           >
             Create
           </button>
@@ -165,13 +195,14 @@ export default function AccessControl() {
 
       {/* Select User */}
       <div style={{ background: '#fff', padding: '15px', border: '1px solid #7a96df', maxWidth: '600px' }}>
-        <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#000' }}>🔑 Manage User Access</h3>
+        <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#000', fontWeight: 'bold' }}>🔑 Manage User Access</h3>
         <div>
           <label style={{ fontWeight: 'bold' }}>Select User: </label>
           <select
+            ref={userSelectRef}
             value={selectedUserId}
             onChange={(e) => handleUserSelect(e.target.value)}
-            style={{ padding: '4px', border: '1px solid #7f9db9', width: '250px' }}
+            style={{ padding: '4px', border: '1px solid #7f9db9', width: '250px', fontWeight: 'bold' }}
           >
             <option value="">-- Choose User --</option>
             {users.map((u) => (
@@ -185,13 +216,13 @@ export default function AccessControl() {
         {selectedUserId && (
           <div style={{ marginTop: '15px', borderTop: '1px solid #ccc', paddingTop: '15px' }}>
             {/* 1. Tabs Permissions */}
-            <h4 style={{ margin: '0 0 10px 0', color: '#0a246a' }}>1. Screen Access (Tabs Permission):</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#0a246a', fontWeight: 'bold' }}>1. Screen Access (Tabs Permission):</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px', fontWeight: 'bold' }}>
               {TAB_PERMISSIONS.map((item) => (
                 <label key={item.key} style={{ cursor: 'pointer' }}>
                   <input
                     type="checkbox"
-                    checked={Number(userPermissions[item.key]) === 1}
+                    checked={isChecked(userPermissions[item.key])}
                     onChange={() => handleCheckboxChange(item.key)}
                   />{' '}
                   {item.label}
@@ -200,12 +231,12 @@ export default function AccessControl() {
             </div>
 
             {/* 2. Action Level Permissions */}
-            <h4 style={{ margin: '15px 0 10px 0', color: '#0a246a' }}>2. Action Level Permissions:</h4>
+            <h4 style={{ margin: '15px 0 10px 0', color: '#0a246a', fontWeight: 'bold' }}>2. Action Level Permissions:</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
               <label style={{ cursor: 'pointer' }}>
                 <input
                   type="checkbox"
-                  checked={Number(userPermissions.can_edit_party) === 1}
+                  checked={isChecked(userPermissions.can_edit_party)}
                   onChange={() => handleCheckboxChange('can_edit_party')}
                 />{' '}
                 <strong>Allow Party Edit / Create (F1)</strong> (Unchecked = Read Only)
@@ -214,7 +245,7 @@ export default function AccessControl() {
               <label style={{ cursor: 'pointer' }}>
                 <input
                   type="checkbox"
-                  checked={Number(userPermissions.can_delete_voucher) === 1}
+                  checked={isChecked(userPermissions.can_delete_voucher)}
                   onChange={() => handleCheckboxChange('can_delete_voucher')}
                 />{' '}
                 <strong>Allow Delete Vouchers</strong>
@@ -225,7 +256,7 @@ export default function AccessControl() {
                 <select
                   value={userPermissions.f5_sync_mode || 'user'}
                   onChange={(e) => handleSelectChange('f5_sync_mode', e.target.value)}
-                  style={{ padding: '2px 5px', marginLeft: '5px' }}
+                  style={{ padding: '2px 5px', marginLeft: '5px', fontWeight: 'bold' }}
                 >
                   <option value="user">User Mode (Download Party / Upload Sale)</option>
                   <option value="admin">Admin Mode (Upload Party / Download Sale)</option>
@@ -242,7 +273,8 @@ export default function AccessControl() {
                 color: '#fff',
                 border: 'none',
                 fontWeight: 'bold',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                fontSize: '12px'
               }}
             >
               Save Access Settings

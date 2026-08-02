@@ -41,7 +41,7 @@ export default function ChangePassword() {
       };
 
       // Backend API call
-      const res = await axios.post('http://localhost:5000/api/access/change-password', payload);
+      const res = await axios.post('https://yantri-desktop.onrender.com/api/access/change-password', payload);
 
       if (res.data && res.data.success) {
         alert(res.data.message || 'पासवर्ड सफलतापूर्वक बदल गया है!');
@@ -52,11 +52,10 @@ export default function ChangePassword() {
         setConfirmPassword('');
 
         // OK dabane ke baad cursor apne aap Old Password box me chala jayega
-        setTimeout(function() {
-          if (oldPasswordInputRef.current) {
-            oldPasswordInputRef.current.focus();
-          }
-        }, 100);
+    window.focus();
+setTimeout(() => {
+    document.getElementById('oldPasswordInput')?.focus();
+}, 50);
       } else {
         alert(res.data.message || 'पासवर्ड नहीं बदला जा सका!');
       }
@@ -82,6 +81,7 @@ export default function ChangePassword() {
           <div style={{ marginBottom: '10px' }}>
             <label style={{ display: 'block', marginBottom: '2px' }}>Old Password:</label>
             <input 
+             id="oldPasswordInput"
               ref={oldPasswordInputRef}
               type="password" 
               value={oldPassword} 

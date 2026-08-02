@@ -41,6 +41,14 @@ export default function BalanceSheetF11() {
     rightNetBalance: 0
   });
 
+  // Helper to restore focus back to Ctrl+F Search Input
+  const restoreFocus = function() {
+    window.focus();
+    setTimeout(function() {
+      document.getElementById('ctrl-f-input-f11')?.focus();
+    }, 50);
+  };
+
   const handleFromDateChange = function(e) {
     const val = e.target.value;
     setFromDate(val);
@@ -54,7 +62,7 @@ export default function BalanceSheetF11() {
   };
 
   const fetchBalanceSheet = function() {
-    const url = 'http://localhost:5000/api/reports/balance-sheet?fromDate=' + encodeURIComponent(fromDate) +
+    const url = 'https://yantri-desktop.onrender.com/api/reports/balance-sheet?fromDate=' + encodeURIComponent(fromDate) +
                 '&toDate=' + encodeURIComponent(toDate) +
                 '&withoutHissa=' + withoutHissa;
 
@@ -64,9 +72,11 @@ export default function BalanceSheetF11() {
         if (data.success) {
           setRows(data.data || []);
         }
+        restoreFocus();
       })
       .catch(function(err) {
         console.error('Error fetching balance sheet:', err);
+        restoreFocus();
       });
   };
 
@@ -182,6 +192,7 @@ export default function BalanceSheetF11() {
     const element = document.getElementById('party-statement-print-area');
     if (!element) {
       alert('Please select a party to download PDF!');
+      restoreFocus();
       return;
     }
 
@@ -195,10 +206,11 @@ export default function BalanceSheetF11() {
     };
 
     html2pdf().set(opt).from(element).save();
+    restoreFocus();
   };
 
   return (
-    <div style={{ padding: '8px', background: '#dcdcdc', minHeight: '93vh', fontSize: '11px', fontFamily: 'Tahoma, Arial, sans-serif', boxSizing: 'border-box' }}>
+    <div style={{ padding: '8px', background: '#dcdcdc', minHeight: '93vh', fontSize: '11px', fontFamily: '"Segoe UI", Tahoma, Arial, sans-serif', boxSizing: 'border-box' }}>
       
       {/* 1. TOP FILTER BAR */}
       <div style={{ background: '#ece9d8', border: '1px solid #7a96df', padding: '6px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
@@ -212,7 +224,7 @@ export default function BalanceSheetF11() {
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', border: '1px solid #7f9db9', padding: '2px 6px', background: '#fff' }}>
             {['Balance', 'Settling Report', 'Today P&L', '3rd Party', 'All Filter'].map(function(item) {
               return (
-                <label key={item} style={{ display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }}>
+                <label key={item} style={{ display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer', fontWeight: 'bold' }}>
                   <input
                     type="radio"
                     name="topFilter"
@@ -233,6 +245,7 @@ export default function BalanceSheetF11() {
               placeholder="Ctrl+F Search..."
               value={ctrlFText}
               onChange={function(e) { setCtrlFText(e.target.value); setSelectedIndex(0); }}
+              autoFocus
               style={{ width: '100px', padding: '1px 4px', border: '1px solid #7f9db9', background: '#ffffd0', fontWeight: 'bold' }}
             />
           </div>
@@ -247,13 +260,13 @@ export default function BalanceSheetF11() {
           </label>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold' }}>
           <span>From:</span>
           <input
             type="text"
             value={fromDate}
             onChange={handleFromDateChange}
-            style={{ width: '75px', padding: '1px 3px', border: '1px solid #7f9db9', fontWeight: 'bold' }}
+            style={{ width: '75px', padding: '1px 3px', border: '1px solid #7f9db9', fontWeight: 'bold', textAlign: 'center' }}
           />
 
           <span>To:</span>
@@ -261,7 +274,7 @@ export default function BalanceSheetF11() {
             type="text"
             value={toDate}
             onChange={handleToDateChange}
-            style={{ width: '75px', padding: '1px 3px', border: '1px solid #7f9db9', fontWeight: 'bold' }}
+            style={{ width: '75px', padding: '1px 3px', border: '1px solid #7f9db9', fontWeight: 'bold', textAlign: 'center' }}
           />
 
           <span>Pname:</span>
@@ -269,14 +282,14 @@ export default function BalanceSheetF11() {
             type="text"
             value={pnameSearch}
             onChange={function(e) { setPnameSearch(e.target.value); setSelectedIndex(0); }}
-            style={{ width: '90px', padding: '1px 3px', border: '1px solid #7f9db9' }}
+            style={{ width: '90px', padding: '1px 3px', border: '1px solid #7f9db9', fontWeight: 'bold' }}
           />
 
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center', border: '1px solid #7f9db9', padding: '2px 6px', background: '#fff' }}>
             <span style={{ fontWeight: 'bold', fontSize: '10px' }}>Filter:</span>
             {['ALL', 'SALE', 'PAYMENT', 'ALL 2'].map(function(opt) {
               return (
-                <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }}>
+                <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer', fontWeight: 'bold' }}>
                   <input
                     type="radio"
                     name="rightFilter"
@@ -300,7 +313,7 @@ export default function BalanceSheetF11() {
         <div style={{ flex: '1.2', border: '1px solid #7a96df', background: '#fff', overflowY: 'auto' }}>
           <table border="1" cellPadding="2" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', fontFamily: 'Tahoma, sans-serif' }}>
             <thead>
-              <tr style={{ background: '#ece9d8', height: '22px', textAlign: 'center' }}>
+              <tr style={{ background: '#ece9d8', height: '22px', textAlign: 'center', fontWeight: 'bold' }}>
                 <th style={{ width: '35px' }}>SrNo</th>
                 <th style={{ textAlign: 'left', paddingLeft: '4px' }}>PName</th>
                 <th style={{ width: '45px' }}>City</th>
@@ -351,7 +364,7 @@ export default function BalanceSheetF11() {
                 })
               ) : (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '30px', color: '#666' }}>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '30px', color: '#666', fontWeight: 'bold' }}>
                     No Balance Sheet records found.
                   </td>
                 </tr>
@@ -370,7 +383,7 @@ export default function BalanceSheetF11() {
                   Party Statement: {partyDetails.party_name || partyDetails.PName} ({partyDetails.city || 'No City'}) [{fromDate} to {toDate}]
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', background: '#3b5998', color: '#fff', padding: '4px', borderRadius: '3px', marginBottom: '8px', fontSize: '9px', flexWrap: 'wrap', gap: '2px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', background: '#3b5998', color: '#fff', padding: '4px', borderRadius: '3px', marginBottom: '8px', fontSize: '9px', flexWrap: 'wrap', gap: '2px', fontWeight: 'bold' }}>
                   <span>Opening: <strong>{partyDetails.opening}</strong></span>
                   <span>Todays: <strong>{partyDetails.todays}</strong></span>
                   <span>TP Patti: <strong>{partyDetails.tp_patti || partyDetails.tpPatti || 0}</strong></span>
@@ -382,7 +395,7 @@ export default function BalanceSheetF11() {
                 {/* DYNAMIC GAME BREAKDOWN TABLE */}
                 <table border="1" cellPadding="3" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', color: '#000', fontSize: '10px' }}>
                   <thead>
-                    <tr style={{ background: '#ece9d8', textAlign: 'center' }}>
+                    <tr style={{ background: '#ece9d8', textAlign: 'center', fontWeight: 'bold' }}>
                       <th>Game</th>
                       <th>Sale</th>
                       <th>Win Amt</th>
@@ -399,7 +412,7 @@ export default function BalanceSheetF11() {
                       const net = gData ? gData.net : 0;
 
                       return (
-                        <tr key={game} style={{ textAlign: 'center' }}>
+                        <tr key={game} style={{ textAlign: 'center', fontWeight: 'bold' }}>
                           <td style={{ fontWeight: 'bold' }}>{game}</td>
                           <td>{sale}</td>
                           <td>{win}</td>
@@ -424,7 +437,7 @@ export default function BalanceSheetF11() {
             
             <table border="1" cellPadding="2" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', fontSize: '10px', textAlign: 'center' }}>
               <thead>
-                <tr style={{ background: '#e0e0e0' }}>
+                <tr style={{ background: '#e0e0e0', fontWeight: 'bold' }}>
                   <th>LENE</th>
                   <th>DENE</th>
                   <th>Net Balance</th>
@@ -467,7 +480,7 @@ export default function BalanceSheetF11() {
           
           <table border="1" cellPadding="2" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', fontSize: '10px', textAlign: 'center' }}>
             <thead>
-              <tr style={{ background: '#e0e0e0' }}>
+              <tr style={{ background: '#e0e0e0', fontWeight: 'bold' }}>
                 <th>Opening</th>
                 <th>P & L</th>
                 <th>TP Patti</th>

@@ -54,13 +54,21 @@ export default function AccountF10() {
     localStorage.setItem('f10_to_date', val);
   };
 
+  // Helper to restore focus back to main input
+  const restoreFocus = function() {
+    window.focus();
+    setTimeout(function() {
+      document.getElementById('party-select-f10')?.focus();
+    }, 50);
+  };
+
   // Fetch F1 Parties Master dynamically
   useEffect(function() {
     fetchParties();
   }, []);
 
   const fetchParties = function() {
-    fetch('http://localhost:5000/api/parties')
+    fetch('https://yantri-desktop.onrender.com/api/parties')
       .then(function(res) { return res.json(); })
       .then(function(data) {
         let list = [];
@@ -107,7 +115,7 @@ export default function AccountF10() {
 
   // Fetch History Records
   const fetchHistory = function() {
-    const url = 'http://localhost:5000/api/accounts?party=' + encodeURIComponent(historyParty) +
+    const url = 'https://yantri-desktop.onrender.com/api/accounts?party=' + encodeURIComponent(historyParty) +
                 '&type=' + encodeURIComponent(historyType) +
                 '&fromDate=' + encodeURIComponent(fromDate) +
                 '&toDate=' + encodeURIComponent(toDate);
@@ -128,13 +136,16 @@ export default function AccountF10() {
           });
 
           setTotals({ totalDiye: diyeSum, totalLiye: liyeSum });
+          restoreFocus();
         } else {
           alert('Error: ' + (data.error || 'Failed to load history'));
+          restoreFocus();
         }
       })
       .catch(function(err) {
         console.error('Fetch history error:', err);
         alert('Server Connection Error!');
+        restoreFocus();
       });
   };
 
@@ -151,10 +162,12 @@ export default function AccountF10() {
     if (e) e.preventDefault();
     if (!party) {
       alert('Please select Party (जिसको पैसे दिए)!');
+      restoreFocus();
       return;
     }
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       alert('Please enter valid Amount!');
+      restoreFocus();
       return;
     }
 
@@ -168,7 +181,7 @@ export default function AccountF10() {
       narration: narration
     };
 
-    fetch('http://localhost:5000/api/accounts/save', {
+    fetch('https://yantri-desktop.onrender.com/api/accounts/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -181,11 +194,13 @@ export default function AccountF10() {
           fetchHistory();
         } else {
           alert('Error: ' + (data.error || 'Failed to save transaction'));
+          restoreFocus();
         }
       })
       .catch(function(err) {
         console.error('Save error:', err);
         alert('Server Connection Error!');
+        restoreFocus();
       });
   };
 
@@ -193,12 +208,13 @@ export default function AccountF10() {
   const handleDelete = function() {
     if (!selectedAccId) {
       alert('Please select an entry from History grid to delete!');
+      restoreFocus();
       return;
     }
 
     if (!window.confirm('Are you sure you want to delete this transaction?')) return;
 
-    fetch('http://localhost:5000/api/accounts/delete/' + selectedAccId, {
+    fetch('https://yantri-desktop.onrender.com/api/accounts/delete/' + selectedAccId, {
       method: 'DELETE'
     })
       .then(function(res) { return res.json(); })
@@ -209,11 +225,13 @@ export default function AccountF10() {
           fetchHistory();
         } else {
           alert('Error: ' + (data.error || 'Failed to delete transaction'));
+          restoreFocus();
         }
       })
       .catch(function(err) {
         console.error('Delete error:', err);
         alert('Server Connection Error!');
+        restoreFocus();
       });
   };
 
@@ -228,20 +246,21 @@ export default function AccountF10() {
   };
 
   return (
-    <div style={{ padding: '10px', background: '#dcdcdc', minHeight: '92vh', fontSize: '11px', display: 'flex', gap: '15px', fontFamily: 'Tahoma, Arial, sans-serif', boxSizing: 'border-box' }}>
+    <div style={{ padding: '10px', background: '#dcdcdc', minHeight: '92vh', fontSize: '11px', display: 'flex', gap: '15px', fontFamily: '"Segoe UI", Tahoma, Arial, sans-serif', boxSizing: 'border-box' }}>
       
       {/* Left Section: Accounts Entry Form */}
       <div style={{ width: '38%', border: '1px solid #7a96df', background: '#ece9d8', padding: '12px', display: 'flex', flexDirection: 'column' }}>
-        <h3 style={{ textAlign: 'center', margin: '0 0 15px 0', fontSize: '13px' }}>Accounts</h3>
+        <h3 style={{ textAlign: 'center', margin: '0 0 15px 0', fontSize: '14px', fontWeight: 'bold' }}>Accounts</h3>
 
         <form onSubmit={handleSave}>
           <div style={{ marginBottom: '10px' }}>
-            <label style={{ display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Party (जिसको पैसे दिए):</label>
+            <label style={{ display: 'block', marginBottom: '2px', fontWeight: 'bold', color: '#111' }}>Party (जिसको पैसे दिए):</label>
             <select
               id="party-select-f10"
               value={party}
               onChange={function(e) { setParty(e.target.value); }}
-              style={{ width: '100%', padding: '2px', border: '1px solid #7f9db9', fontWeight: 'bold' }}
+              autoFocus
+              style={{ width: '100%', padding: '3px', border: '1px solid #7f9db9', fontWeight: 'bold', fontSize: '11px' }}
             >
               <option value="">-- Select Party --</option>
               {partiesList.map(function(p, idx) {
@@ -252,11 +271,11 @@ export default function AccountF10() {
           </div>
 
           <div style={{ marginBottom: '10px' }}>
-            <label style={{ display: 'block', marginBottom: '2px' }}>Opposite Party (किसने पैसे दिए):</label>
+            <label style={{ display: 'block', marginBottom: '2px', fontWeight: 'bold', color: '#111' }}>Opposite Party (किसने पैसे दिए):</label>
             <select
               value={oppositeParty}
               onChange={function(e) { setOppositeParty(e.target.value); }}
-              style={{ width: '100%', padding: '2px', border: '1px solid #7f9db9' }}
+              style={{ width: '100%', padding: '3px', border: '1px solid #7f9db9', fontWeight: 'bold', fontSize: '11px' }}
             >
               <option value="">-- Select Opposite Party --</option>
               {partiesList
@@ -272,39 +291,39 @@ export default function AccountF10() {
           <div style={{ height: '70px', background: '#5478a0', border: '1px solid #777', marginBottom: '10px' }}></div>
 
           <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center' }}>
-            <label style={{ width: '60px' }}>Date: </label>
+            <label style={{ width: '60px', fontWeight: 'bold' }}>Date: </label>
             <input
               type="text"
               value={entryDate}
               onChange={handleEntryDateChange}
-              style={{ width: '110px', padding: '2px', border: '1px solid #7f9db9', fontWeight: 'bold' }}
+              style={{ width: '110px', padding: '3px', border: '1px solid #7f9db9', fontWeight: 'bold', textAlign: 'center' }}
             />
           </div>
 
           <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center' }}>
-            <label style={{ width: '60px' }}>Amount: </label>
+            <label style={{ width: '60px', fontWeight: 'bold' }}>Amount: </label>
             <input
               type="text"
               value={amount}
               onChange={function(e) { setAmount(e.target.value); }}
-              style={{ width: '130px', padding: '2px', border: '1px solid #7f9db9', fontWeight: 'bold' }}
+              style={{ width: '130px', padding: '3px', border: '1px solid #7f9db9', fontWeight: 'bold' }}
             />
           </div>
 
           <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center' }}>
-            <label style={{ width: '60px' }}>Type: </label>
-            <span style={{ padding: '2px 8px', background: '#fff', border: '1px solid #7f9db9', fontWeight: 'bold', color: '#800000' }}>
+            <label style={{ width: '60px', fontWeight: 'bold' }}>Type: </label>
+            <span style={{ padding: '3px 8px', background: '#fff', border: '1px solid #7f9db9', fontWeight: 'bold', color: '#800000' }}>
               Payment / Diye
             </span>
           </div>
 
           <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', marginBottom: '2px' }}>Narration:</label>
+            <label style={{ display: 'block', marginBottom: '2px', fontWeight: 'bold' }}>Narration:</label>
             <input
               type="text"
               value={narration}
               onChange={function(e) { setNarration(e.target.value); }}
-              style={{ width: '100%', padding: '2px', border: '1px solid #7f9db9' }}
+              style={{ width: '100%', padding: '3px', border: '1px solid #7f9db9', fontWeight: 'bold' }}
               placeholder="Cash / Bank / Rokad Details..."
             />
           </div>
@@ -312,35 +331,35 @@ export default function AccountF10() {
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
               type="submit"
-              style={{ padding: '4px 20px', cursor: 'pointer', background: '#ece9d8', border: '2px solid #7a96df', fontWeight: 'bold' }}
+              style={{ padding: '5px 22px', cursor: 'pointer', background: '#ece9d8', border: '2px solid #7a96df', fontWeight: 'bold', fontSize: '11px' }}
             >
               Save
             </button>
             <button
               type="button"
               onClick={handleDelete}
-              style={{ padding: '4px 20px', background: '#800000', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+              style={{ padding: '5px 22px', background: '#800000', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', borderRadius: '2px' }}
             >
               Delete
             </button>
           </div>
         </form>
 
-        <div style={{ marginTop: 'auto', paddingTop: '10px', fontSize: '10px', color: '#555' }}>
+        <div style={{ marginTop: 'auto', paddingTop: '10px', fontSize: '10px', color: '#333', fontWeight: 'bold' }}>
           <strong>Ctrl+P</strong> - Focus Party For Entry
         </div>
       </div>
 
       {/* Right Section: Transaction History Grid */}
       <div style={{ width: '62%', border: '1px solid #7a96df', background: '#ece9d8', padding: '12px', display: 'flex', flexDirection: 'column' }}>
-        <h3 style={{ textAlign: 'center', margin: '0 0 10px 0', fontSize: '13px' }}>History</h3>
+        <h3 style={{ textAlign: 'center', margin: '0 0 10px 0', fontSize: '14px', fontWeight: 'bold' }}>History</h3>
 
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px', fontSize: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px', fontSize: '11px', fontWeight: 'bold' }}>
           <span>Party: 
             <select
               value={historyParty}
               onChange={function(e) { setHistoryParty(e.target.value); }}
-              style={{ fontSize: '10px', border: '1px solid #7f9db9' }}
+              style={{ fontSize: '11px', border: '1px solid #7f9db9', fontWeight: 'bold', marginLeft: '3px' }}
             >
               <option value="All">All</option>
               {partiesList.map(function(p, idx) {
@@ -355,7 +374,7 @@ export default function AccountF10() {
               id="history-type-f10"
               value={historyType}
               onChange={function(e) { setHistoryType(e.target.value); }}
-              style={{ fontSize: '10px', border: '1px solid #7f9db9' }}
+              style={{ fontSize: '11px', border: '1px solid #7f9db9', fontWeight: 'bold', marginLeft: '3px' }}
             >
               <option value="All">All</option>
               <option value="Receipt/Liye">Receipt/Liye</option>
@@ -368,7 +387,7 @@ export default function AccountF10() {
               type="text"
               value={fromDate}
               onChange={handleFromDateChange}
-              style={{ width: '70px', fontSize: '10px', border: '1px solid #7f9db9' }}
+              style={{ width: '70px', fontSize: '11px', border: '1px solid #7f9db9', fontWeight: 'bold', textAlign: 'center', marginLeft: '3px' }}
             />
           </span>
 
@@ -377,13 +396,13 @@ export default function AccountF10() {
               type="text"
               value={toDate}
               onChange={handleToDateChange}
-              style={{ width: '70px', fontSize: '10px', border: '1px solid #7f9db9' }}
+              style={{ width: '70px', fontSize: '11px', border: '1px solid #7f9db9', fontWeight: 'bold', textAlign: 'center', marginLeft: '3px' }}
             />
           </span>
 
           <button
             onClick={fetchHistory}
-            style={{ padding: '2px 10px', cursor: 'pointer', background: '#ece9d8', border: '1px solid #777', fontWeight: 'bold', color: '#0000aa' }}
+            style={{ padding: '3px 12px', cursor: 'pointer', background: '#ece9d8', border: '1px solid #777', fontWeight: 'bold', color: '#0000aa', fontSize: '11px' }}
           >
             Show
           </button>
@@ -391,9 +410,9 @@ export default function AccountF10() {
 
         {/* History Table Container */}
         <div style={{ flex: 1, background: '#5478a0', border: '1px solid #777', minHeight: '250px', marginBottom: '8px', overflowY: 'auto' }}>
-          <table border="1" cellPadding="3" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '10px', background: '#fff' }}>
+          <table border="1" cellPadding="4" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '11px', background: '#fff' }}>
             <thead>
-              <tr style={{ background: '#ece9d8', textAlign: 'center' }}>
+              <tr style={{ background: '#d8dee8', textAlign: 'center', fontWeight: 'bold', color: '#000' }}>
                 <th>Date</th>
                 <th style={{ textAlign: 'left' }}>Party</th>
                 <th style={{ textAlign: 'left' }}>Opposite Party</th>
@@ -418,17 +437,17 @@ export default function AccountF10() {
                       }}
                     >
                       <td style={{ textAlign: 'center' }}>{r.date_val}</td>
-                      <td style={{ textAlign: 'left' }}>{r.party_name}</td>
+                      <td style={{ textAlign: 'left', fontWeight: 'bold' }}>{r.party_name}</td>
                       <td style={{ textAlign: 'left' }}>{r.opposite_party || '-'}</td>
-                      <td>{r.amount}</td>
-                      <td style={{ textAlign: 'center', color: isSelected ? '#fff' : (r.type === 'Receipt/Liye' ? 'blue' : 'red') }}>{r.type}</td>
+                      <td><strong>{r.amount}</strong></td>
+                      <td style={{ textAlign: 'center', color: isSelected ? '#fff' : (r.type === 'Receipt/Liye' ? 'blue' : 'red'), fontWeight: 'bold' }}>{r.type}</td>
                       <td style={{ textAlign: 'left' }}>{r.narration || ''}</td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', color: '#fff', padding: '30px', background: '#5478a0' }}>
+                  <td colSpan="6" style={{ textAlign: 'center', color: '#fff', padding: '30px', background: '#5478a0', fontWeight: 'bold' }}>
                     Click <strong>Show</strong> to view History records
                   </td>
                 </tr>
@@ -437,18 +456,18 @@ export default function AccountF10() {
           </table>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '6px', border: '1px solid #aaa' }}>
-          <div>Total Diye: <strong style={{ color: 'red' }}>{totals.totalDiye}</strong></div>
-          <div>Total Liye: <strong style={{ color: 'blue' }}>{totals.totalLiye}</strong></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '6px 12px', border: '1px solid #aaa', fontWeight: 'bold', fontSize: '12px' }}>
+          <div>Total Diye: <strong style={{ color: 'red', fontSize: '13px' }}>{totals.totalDiye}</strong></div>
+          <div>Total Liye: <strong style={{ color: 'blue', fontSize: '13px' }}>{totals.totalLiye}</strong></div>
           <button
             onClick={function() { window.print(); }}
-            style={{ padding: '2px 15px', cursor: 'pointer', fontWeight: 'bold', background: '#ece9d8', border: '1px solid #777' }}
+            style={{ padding: '3px 18px', cursor: 'pointer', fontWeight: 'bold', background: '#ece9d8', border: '1px solid #777', fontSize: '11px' }}
           >
             Print
           </button>
         </div>
 
-        <div style={{ marginTop: '8px', fontSize: '10px', color: '#555' }}>
+        <div style={{ marginTop: '8px', fontSize: '10px', color: '#333', fontWeight: 'bold' }}>
           <strong>Ctrl+T</strong> - Focus Type For History
         </div>
       </div>

@@ -38,6 +38,14 @@ export default function VoucherYantriF3() {
   const [baharHaruf, setBaharHaruf] = useState({ '1': '', '2': '', '3': '', '4': '', '5': '', '6': '', '7': '', '8': '', '9': '', '0': '' });
   const [anderHaruf, setAnderHaruf] = useState({ '1': '', '2': '', '3': '', '4': '', '5': '', '6': '', '7': '', '8': '', '9': '', '0': '' });
 
+  // Helper to restore focus back to first grid input box
+  const restoreFocus = function() {
+    window.focus();
+    setTimeout(function() {
+      document.getElementById('yantri-box-1')?.focus();
+    }, 50);
+  };
+
   useEffect(function() {
     fetchGames();
     fetchParties();
@@ -45,7 +53,7 @@ export default function VoucherYantriF3() {
 
   const fetchGames = async function() {
     try {
-      const res = await axios.get('http://localhost:5000/api/games');
+      const res = await axios.get('https://yantri-desktop.onrender.com/api/games');
       if (res.data && res.data.success && Array.isArray(res.data.games)) {
         setGameList(res.data.games);
       }
@@ -56,7 +64,7 @@ export default function VoucherYantriF3() {
 
   const fetchParties = async function() {
     try {
-      const res = await axios.get('http://localhost:5000/api/parties');
+      const res = await axios.get('https://yantri-desktop.onrender.com/api/parties');
       let dataArray = [];
       if (Array.isArray(res.data)) {
         dataArray = res.data;
@@ -215,6 +223,7 @@ export default function VoucherYantriF3() {
     setGridData(createInitialGrid());
     setBaharHaruf({ '1': '', '2': '', '3': '', '4': '', '5': '', '6': '', '7': '', '8': '', '9': '', '0': '' });
     setAnderHaruf({ '1': '', '2': '', '3': '', '4': '', '5': '', '6': '', '7': '', '8': '', '9': '', '0': '' });
+    restoreFocus();
   };
 
   const getRowTotal = function(rowIndex) {
@@ -233,7 +242,7 @@ export default function VoucherYantriF3() {
   const digitSequence = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
   return (
-    <div style={{ padding: '4px', background: '#3a4856', color: '#fff', height: '88vh', maxHeight: '88vh', fontSize: '11px', fontFamily: 'Tahoma, Arial, sans-serif', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ padding: '4px', background: '#3a4856', color: '#fff', height: '88vh', maxHeight: '88vh', fontSize: '11px', fontFamily: '"Segoe UI", Tahoma, Arial, sans-serif', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       
       {/* Top Controls Bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#3a4856', padding: '2px 4px', marginBottom: '4px' }}>
@@ -332,6 +341,7 @@ export default function VoucherYantriF3() {
                           value={gridData[num]}
                           onChange={function(e) { handleGridChange(num, e.target.value); }}
                           onKeyDown={function(e) { handleGridKeyDown(e, num); }}
+                          autoFocus={num === 1}
                           style={{ width: '100%', height: '100%', textAlign: 'center', fontSize: '13px', background: '#fff', color: '#000', border: '1px solid #7f9db9', fontWeight: 'bold', outline: 'none', boxSizing: 'border-box' }}
                         />
                       </div>

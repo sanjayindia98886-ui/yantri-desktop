@@ -92,11 +92,19 @@ export default function SaleLCF9() {
     }
   }, [selectedRowIndex]);
 
+  // Helper function for restoring focus
+  const restoreFocus = function() {
+    window.focus();
+    setTimeout(function() {
+      document.getElementById('f9FilterInput')?.focus();
+    }, 50);
+  };
+
   // Fetch LC Data
   const fetchLCData = async function() {
     setLoading(true);
     try {
-      const url = 'http://localhost:5000/api/sale-lc?fromDate=' + encodeURIComponent(fromDate) + '&toDate=' + encodeURIComponent(toDate) + '&lcType=' + encodeURIComponent(lcType);
+      const url = 'https://yantri-desktop.onrender.com/api/sale-lc?fromDate=' + encodeURIComponent(fromDate) + '&toDate=' + encodeURIComponent(toDate) + '&lcType=' + encodeURIComponent(lcType);
       const response = await fetch(url);
       const data = await response.json();
 
@@ -104,12 +112,15 @@ export default function SaleLCF9() {
         setRows(data.rows || []);
         setIsLoaded(true);
         setSelectedRowIndex(0);
+        restoreFocus();
       } else {
         alert('Error: ' + (data.error || 'Unable to fetch LC data'));
+        restoreFocus();
       }
     } catch (error) {
       console.error('Error fetching Sale LC data:', error);
       alert('Server Connection Error!');
+      restoreFocus();
     } finally {
       setLoading(false);
     }
@@ -121,7 +132,7 @@ export default function SaleLCF9() {
     if (!window.confirm('क्या आप F9 की इस LC बोनस राशि को सीधे ओपनिंग / नेट बैलेंस में जोड़ना चाहते हैं?')) return;
 
     try {
-      const response = await fetch('http://localhost:5000/api/sale-lc/post-lc', {
+      const response = await fetch('https://yantri-desktop.onrender.com/api/sale-lc/post-lc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -136,10 +147,12 @@ export default function SaleLCF9() {
         fetchLCData();
       } else {
         alert('Error: ' + (data.error || 'Failed to post LC'));
+        restoreFocus();
       }
     } catch (error) {
       console.error('Error posting LC:', error);
       alert('Server Connection Error!');
+      restoreFocus();
     }
   };
 
@@ -148,13 +161,14 @@ export default function SaleLCF9() {
     if (!selectedParty) return;
     if (!selectedParty.isPosted) {
       alert('चुनी गई पार्टी की LC अभी पोस्ट नहीं हुई है!');
+      restoreFocus();
       return;
     }
 
     if (!window.confirm('क्या आप ' + selectedParty.name + ' की पोस्टेड LC को हटाना (Delete) चाहते हैं?')) return;
 
     try {
-      const response = await fetch('http://localhost:5000/api/sale-lc/delete-lc', {
+      const response = await fetch('https://yantri-desktop.onrender.com/api/sale-lc/delete-lc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -169,10 +183,12 @@ export default function SaleLCF9() {
         fetchLCData();
       } else {
         alert('Error: ' + (data.error || 'Failed to delete LC entry'));
+        restoreFocus();
       }
     } catch (error) {
       console.error('Error deleting LC:', error);
       alert('Server Connection Error!');
+      restoreFocus();
     }
   };
 
@@ -180,32 +196,33 @@ export default function SaleLCF9() {
     window.print();
   };
 
-  // Pure CSS String without Backticks
+  // CSS Styling Updated for Layout & Typography Fixes
   const cssStyles = 
-    '.f9-container { padding: 4px; background-color: #d0d5dd; height: 95vh; font-size: 10px; font-family: "Segoe UI", Tahoma, Arial, sans-serif; display: flex; flex-direction: column; box-sizing: border-box; outline: none; }\n' +
-    '.filter-bar { background: #e0e5eb; padding: 4px 8px; border: 1px solid #999; margin-bottom: 4px; font-size: 11px; display: flex; flex-direction: column; gap: 4px; }\n' +
-    '.filter-row { display: flex; gap: 12px; align-items: center; }\n' +
-    '.table-wrapper { flex: 1; background: #ffffff; border: 1px solid #777; overflow: auto; margin-bottom: 4px; position: relative; }\n' +
+    '.f9-container { padding: 4px; background-color: #d0d5dd; height: 96vh; font-size: 11px; font-family: "Segoe UI", Tahoma, Arial, sans-serif; display: flex; flex-direction: column; box-sizing: border-box; outline: none; overflow: hidden; }\n' +
+    '.filter-bar { background: #e0e5eb; padding: 6px 8px; border: 1px solid #999; margin-bottom: 4px; font-size: 11px; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }\n' +
+    '.filter-row { display: flex; gap: 12px; align-items: center; font-weight: 600; }\n' +
+    '.table-wrapper { flex: 1; background: #ffffff; border: 1px solid #777; overflow: auto; margin-bottom: 4px; position: relative; min-height: 0; }\n' +
     '.table-wrapper.blank-screen { background: #5478a0; }\n' +
-    '.lc-table { width: 100%; border-collapse: collapse; text-align: right; font-size: 10px; background: #ffffff; }\n' +
-    '.lc-table th { background-color: #e0e0e0; border: 1px solid #888; padding: 3px 4px; position: sticky; top: 0; z-index: 2; font-weight: bold; text-align: center; color: #000; font-size: 10px; height: 20px; }\n' +
-    '.lc-table td { border: 1px solid #a0a0a0; padding: 2px 4px; white-space: nowrap; font-size: 10px; cursor: pointer; }\n' +
+    '.lc-table { width: 100%; border-collapse: collapse; text-align: right; font-size: 11px; background: #ffffff; }\n' +
+    '.lc-table th { background-color: #d8dee8; border: 1px solid #777; padding: 4px 6px; position: sticky; top: 0; z-index: 2; font-weight: bold; text-align: center; color: #111; font-size: 11px; height: 22px; }\n' +
+    '.lc-table td { border: 1px solid #b0b0b0; padding: 3px 6px; white-space: nowrap; font-size: 11px; cursor: pointer; color: #111; }\n' +
     '.lc-table tr:hover { background-color: #e5f1fb; }\n' +
     '.lc-table tr.selected-row { background-color: #0078d7 !important; color: #ffffff !important; }\n' +
-    '.lc-table tr.selected-row td { color: #ffffff !important; background-color: #0078d7 !important; }\n' +
-    '.pname-td { text-align: left !important; font-weight: bold; }\n' +
-    '.pno-td { text-align: center !important; }\n' +
-    '.status-tag { font-size: 9px; padding: 1px 4px; border-radius: 2px; font-weight: bold; text-align: center; }\n' +
+    '.lc-table tr.selected-row td { color: #ffffff !important; background-color: #0078d7 !important; font-weight: bold; }\n' +
+    '.pname-td { text-align: left !important; font-weight: bold; color: #000; font-size: 11px; }\n' +
+    '.pno-td { text-align: center !important; font-weight: 600; }\n' +
+    '.status-tag { font-size: 9px; padding: 2px 6px; border-radius: 2px; font-weight: bold; text-align: center; display: inline-block; }\n' +
     '.tag-posted { background-color: #28a745; color: #fff; }\n' +
     '.tag-pending { background-color: #ffc107; color: #000; }\n' +
-    '.bottom-bar { display: flex; gap: 8px; align-items: flex-end; margin-top: 2px; }\n' +
-    '.totals-card { flex: 1; border: 1px solid #888; background: #e8e8e8; padding: 2px; }\n' +
-    '.totals-table { width: 100%; border-collapse: collapse; background: #ffffff; font-size: 10px; text-align: right; }\n' +
-    '.totals-table th, .totals-table td { border: 1px solid #a0a0a0; padding: 2px 6px; font-weight: bold; }\n' +
-    '.totals-table th { background: #dcdcdc; text-align: center; }\n' +
-    '.status-box { font-size: 12px; font-weight: bold; padding: 4px 8px; border: 1px solid #999; background: #e8e8e8; min-width: 140px; text-align: center; }\n' +
-    '.post-btn { background-color: #d9534f; color: #fff; font-weight: bold; border: 1px solid #c9302c; padding: 6px 16px; cursor: pointer; border-radius: 2px; }\n' +
-    '.delete-btn { background-color: #6c757d; color: #fff; font-weight: bold; border: 1px solid #5a6268; padding: 6px 14px; cursor: pointer; border-radius: 2px; }\n' +
+    '.bottom-bar { display: flex; gap: 8px; align-items: center; margin-top: auto; padding: 4px; background: #c5cbd5; border: 1px solid #888; flex-shrink: 0; box-shadow: 0px -2px 5px rgba(0,0,0,0.1); }\n' +
+    '.totals-card { flex: 1; border: 1px solid #888; background: #e8e8e8; padding: 1px; }\n' +
+    '.totals-table { width: 100%; border-collapse: collapse; background: #ffffff; font-size: 11px; text-align: right; }\n' +
+    '.totals-table th, .totals-table td { border: 1px solid #999; padding: 3px 6px; font-weight: bold; color: #000; }\n' +
+    '.totals-table th { background: #d0d0d0; text-align: center; font-size: 10px; }\n' +
+    '.status-box { font-size: 12px; font-weight: bold; padding: 6px 10px; border: 1px solid #888; background: #ffffff; min-width: 140px; text-align: center; border-radius: 2px; }\n' +
+    '.post-btn { background-color: #d9534f; color: #fff; font-weight: bold; border: 1px solid #c9302c; padding: 6px 18px; cursor: pointer; border-radius: 3px; font-size: 11px; }\n' +
+    '.post-btn:hover { background-color: #c9302c; }\n' +
+    '.delete-btn { background-color: #6c757d; color: #fff; font-weight: bold; border: 1px solid #5a6268; padding: 6px 16px; cursor: pointer; border-radius: 3px; font-size: 11px; }\n' +
     '.delete-btn:hover { background-color: #5a6268; }\n' +
     '@media print {\n' +
     '  body * { visibility: hidden; }\n' +
@@ -222,17 +239,17 @@ export default function SaleLCF9() {
       {/* Top Filter Bar */}
       <div className="filter-bar">
         <div className="filter-row">
-          <span>Date: <input type="text" value={fromDate} onChange={handleFromDateChange} style={{ width: '75px', textAlign: 'center' }} /></span>
-          <span>To: <input type="text" value={toDate} onChange={handleToDateChange} style={{ width: '75px', textAlign: 'center' }} /></span>
+          <span>Date: <input type="text" value={fromDate} onChange={handleFromDateChange} style={{ width: '80px', textAlign: 'center', fontWeight: 'bold' }} /></span>
+          <span>To: <input type="text" value={toDate} onChange={handleToDateChange} style={{ width: '80px', textAlign: 'center', fontWeight: 'bold' }} /></span>
 
           <span>LC Type: </span>
-          <select value={lcType} onChange={function(e) { setLcType(e.target.value); }}>
+          <select value={lcType} onChange={function(e) { setLcType(e.target.value); }} style={{ fontWeight: 'bold', padding: '1px 4px' }}>
             <option value="Customer LC">Customer LC</option>
             <option value="Third Party LC">Third Party LC</option>
             <option value="Agent LC">Agent LC</option>
           </select>
 
-          <button onClick={fetchLCData} style={{ padding: '1px 16px', cursor: 'pointer', fontWeight: 'bold' }}>
+          <button onClick={fetchLCData} style={{ padding: '2px 18px', cursor: 'pointer', fontWeight: 'bold' }}>
             {loading ? 'Loading...' : 'Show'}
           </button>
         </div>
@@ -240,11 +257,13 @@ export default function SaleLCF9() {
         <div className="filter-row">
           <span>Filter: </span>
           <input 
+            id="f9FilterInput"
             type="text" 
             value={filterText} 
             onChange={function(e) { setFilterText(e.target.value); setSelectedRowIndex(0); }} 
             placeholder="Search Party Name or Pno..." 
-            style={{ width: '260px' }} 
+            autoFocus
+            style={{ width: '280px', padding: '2px 6px', fontWeight: 'bold' }} 
           />
         </div>
       </div>
@@ -256,7 +275,7 @@ export default function SaleLCF9() {
             <thead>
               <tr>
                 <th style={{ width: '35px' }}>Pno</th>
-                <th style={{ width: '120px', textAlign: 'left' }}>Name</th>
+                <th style={{ width: '130px', textAlign: 'left' }}>Name</th>
                 <th>Amount</th>
                 <th>Comm</th>
                 <th>Balance</th>
@@ -268,7 +287,7 @@ export default function SaleLCF9() {
                 <th>LENE</th>
                 <th>Comm(%)</th>
                 <th>CommAmount</th>
-                <th style={{ width: '55px' }}>Status</th>
+                <th style={{ width: '60px' }}>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -306,7 +325,7 @@ export default function SaleLCF9() {
         )}
       </div>
 
-      {/* Bottom Bar */}
+      {/* Bottom Bar Fixed at Bottom */}
       <div className="bottom-bar">
         
         <div className="totals-card">
@@ -350,7 +369,7 @@ export default function SaleLCF9() {
 
         {/* Print Button */}
         <div className="action-btns" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <span style={{ fontSize: '10px', color: '#555' }}>Ctrl+P</span>
+          <span style={{ fontSize: '9px', color: '#333', fontWeight: 'bold' }}>Ctrl+P</span>
           <button onClick={handlePrint} style={{ padding: '3px 12px', cursor: 'pointer', fontWeight: 'bold' }}>Print</button>
         </div>
 

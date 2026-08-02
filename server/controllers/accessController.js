@@ -31,6 +31,31 @@ function parseBit(val) {
   return 0;
 }
 
+// Helper to normalize permissions object so frontend receives both key formats seamlessly
+function normalizePermissions(row, userId, role) {
+  if (!row) return getDefaultPermissions(userId, role);
+  
+  return {
+    user_id: row.user_id || userId,
+    f1_party: parseBit(row.f1_party),
+    f2_voucher_sale: parseBit(row.f2_voucher_sale),
+    f3_voucher_yantri: parseBit(row.f3_voucher_yantri),
+    f4_yantri: parseBit(row.f4_yantri),
+    f5_master: parseBit(row.f5_master),
+    f6_result: parseBit(row.f6_result),
+    f7_summary: parseBit(row.f7_summary),
+    f8_balance_history: parseBit(row.f8_balance_history),
+    f9_sale_lc: parseBit(row.f9_sale_lc),
+    f10_account: parseBit(row.f10_account),
+    f11_balance_sheet: parseBit(row.f11_balance_sheet),
+    f12_profit_loss: parseBit(row.f12_profit_loss),
+    game_access: parseBit(row.game_access),
+    can_edit_party: parseBit(row.can_edit_party),
+    can_delete_voucher: parseBit(row.can_delete_voucher),
+    f5_sync_mode: row.f5_sync_mode || 'user'
+  };
+}
+
 // Default Permission Object
 function getDefaultPermissions(userId, role) {
   const isUserRole = String(role || '').toLowerCase() === 'user';
@@ -66,7 +91,7 @@ const getUsers = (req, res) => {
   });
 };
 
-// 2. Fetch Permissions for Selected User
+// 2. Fetch Permissions for Selected User (Normalized)
 const getUserPermissions = (req, res) => {
   const userId = req.params.userId;
   const query = "SELECT * FROM permissions WHERE user_id = ?";
@@ -74,10 +99,8 @@ const getUserPermissions = (req, res) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
-    if (!row) {
-      return res.json(getDefaultPermissions(Number(userId), 'user'));
-    }
-    res.json(row);
+    const perms = normalizePermissions(row, Number(userId), 'user');
+    res.json(perms);
   });
 };
 
@@ -203,10 +226,7 @@ const loginUser = (req, res) => {
         return res.status(500).json({ success: false, message: permErr.message });
       }
 
-      let finalPerms = permRow;
-      if (!finalPerms) {
-        finalPerms = getDefaultPermissions(userRow.id, userRow.role);
-      }
+      const finalPerms = normalizePermissions(permRow, userRow.id, userRow.role);
 
       return res.json({
         success: true,

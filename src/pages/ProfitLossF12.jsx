@@ -29,6 +29,14 @@ export default function ProfitLossF12() {
     adjustment: 0, lc: 0, netPL: 0, opening: 0, payment: 0, netBalance: 0
   });
 
+  // Helper to restore focus back to Filter Input
+  const restoreFocus = function() {
+    window.focus();
+    setTimeout(function() {
+      document.getElementById('f12FilterInput')?.focus();
+    }, 50);
+  };
+
   const handleFromDateChange = function(e) {
     const val = e.target.value;
     setFromDate(val);
@@ -43,7 +51,7 @@ export default function ProfitLossF12() {
 
   const fetchProfitLoss = function() {
     // ✅ Exact URL matching backend route
-    const url = 'http://localhost:5000/api/profit-loss?fromDate=' + encodeURIComponent(fromDate) +
+    const url = 'https://yantri-desktop.onrender.com/api/profit-loss?fromDate=' + encodeURIComponent(fromDate) +
                 '&toDate=' + encodeURIComponent(toDate) +
                 '&partyType=' + encodeURIComponent(partyTypeFilter) +
                 '&thirdParty=' + encodeURIComponent(thirdPartyFilter);
@@ -59,10 +67,12 @@ export default function ProfitLossF12() {
         } else {
           alert('Error: ' + (data.error || 'Failed to fetch Profit & Loss data'));
         }
+        restoreFocus();
       })
       .catch(function(err) {
         console.error('Fetch Profit & Loss Error:', err);
         alert('Server Connection Error!');
+        restoreFocus();
       });
   };
 
@@ -120,20 +130,23 @@ export default function ProfitLossF12() {
   const handlePostTPComm = function() {
     if (!selectedParty) {
       alert('Please select a party first!');
+      restoreFocus();
       return;
     }
     const currentTpComm = Number(selectedParty.tpComm || 0);
     if (Math.abs(currentTpComm) === 0) {
       alert('No TP Commission available to post for ' + (selectedParty.party_name || 'selected party'));
+      restoreFocus();
       return;
     }
 
     if (!window.confirm('Are you sure you want to Post TP Commission (' + currentTpComm + ') for ' + selectedParty.party_name + '?')) {
+      restoreFocus();
       return;
     }
 
     // ✅ FIXED ROUTE: Corrected from /api/reports/profit-loss/... to /api/profit-loss/post-tp-comm
-    fetch('http://localhost:5000/api/profit-loss/post-tp-comm', {
+    fetch('https://yantri-desktop.onrender.com/api/profit-loss/post-tp-comm', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -149,11 +162,13 @@ export default function ProfitLossF12() {
           fetchProfitLoss();
         } else {
           alert('Error: ' + (data.error || 'Failed to post TP Commission'));
+          restoreFocus();
         }
       })
       .catch(function(err) {
         console.error('Post TP Comm Error:', err);
         alert('Server Connection Error!');
+        restoreFocus();
       });
   };
 
@@ -161,20 +176,23 @@ export default function ProfitLossF12() {
   const handleDeleteTPComm = function() {
     if (!selectedParty) {
       alert('Please select a party first!');
+      restoreFocus();
       return;
     }
 
     if (!selectedParty.isTpPosted) {
       alert('Selected party TP Commission is not posted yet!');
+      restoreFocus();
       return;
     }
 
     if (!window.confirm('Are you sure you want to Delete/Unpost TP Commission entry for ' + selectedParty.party_name + '?')) {
+      restoreFocus();
       return;
     }
 
     // ✅ FIXED ROUTE: Corrected from /api/reports/profit-loss/... to /api/profit-loss/delete-tp-comm
-    fetch('http://localhost:5000/api/profit-loss/delete-tp-comm', {
+    fetch('https://yantri-desktop.onrender.com/api/profit-loss/delete-tp-comm', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -189,11 +207,13 @@ export default function ProfitLossF12() {
           fetchProfitLoss();
         } else {
           alert('Error: ' + (data.error || 'Failed to delete TP Commission entry'));
+          restoreFocus();
         }
       })
       .catch(function(err) {
         console.error('Delete TP Comm Error:', err);
         alert('Server Connection Error!');
+        restoreFocus();
       });
   };
 
@@ -210,13 +230,14 @@ export default function ProfitLossF12() {
     };
 
     html2pdf().set(opt).from(element).save();
+    restoreFocus();
   };
 
   return (
-    <div style={{ padding: '8px', background: '#dcdcdc', minHeight: '92vh', fontSize: '11px', display: 'flex', flexDirection: 'column', fontFamily: 'Tahoma, Arial, sans-serif', boxSizing: 'border-box' }}>
+    <div style={{ padding: '8px', background: '#dcdcdc', minHeight: '92vh', fontSize: '11px', display: 'flex', flexDirection: 'column', fontFamily: '"Segoe UI", Tahoma, Arial, sans-serif', boxSizing: 'border-box' }}>
       
       {/* Top Filter Controls */}
-      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: '#ece9d8', padding: '6px 10px', border: '1px solid #7a96df', marginBottom: '8px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: '#ece9d8', padding: '6px 10px', border: '1px solid #7a96df', marginBottom: '8px', flexWrap: 'wrap', fontWeight: 'bold' }}>
         
         <div style={{ display: 'flex', gap: '8px', background: '#fff', border: '1px solid #7f9db9', padding: '2px 6px' }}>
           <label style={{ cursor: 'pointer' }}>
@@ -231,15 +252,15 @@ export default function ProfitLossF12() {
         </div>
 
         <span>From: 
-          <input type="text" value={fromDate} onChange={handleFromDateChange} style={{ width: '75px', padding: '1px 3px', border: '1px solid #7f9db9', fontWeight: 'bold' }} />
+          <input type="text" value={fromDate} onChange={handleFromDateChange} style={{ width: '75px', padding: '1px 3px', border: '1px solid #7f9db9', fontWeight: 'bold', textAlign: 'center' }} />
         </span>
         
         <span>To: 
-          <input type="text" value={toDate} onChange={handleToDateChange} style={{ width: '75px', padding: '1px 3px', border: '1px solid #7f9db9', fontWeight: 'bold' }} />
+          <input type="text" value={toDate} onChange={handleToDateChange} style={{ width: '75px', padding: '1px 3px', border: '1px solid #7f9db9', fontWeight: 'bold', textAlign: 'center' }} />
         </span>
 
         <span>3rd Party Filter: 
-          <select value={thirdPartyFilter} onChange={function(e) { setThirdPartyFilter(e.target.value); }} style={{ padding: '1px', border: '1px solid #7f9db9' }}>
+          <select value={thirdPartyFilter} onChange={function(e) { setThirdPartyFilter(e.target.value); }} style={{ padding: '1px', border: '1px solid #7f9db9', fontWeight: 'bold' }}>
             <option value="All">All</option>
             {thirdPartyOptions.map(function(tp) {
               return <option key={tp} value={tp}>{tp}</option>;
@@ -248,7 +269,15 @@ export default function ProfitLossF12() {
         </span>
 
         <span>Filter: 
-          <input type="text" value={filterText} onChange={function(e) { setFilterText(e.target.value); }} style={{ width: '100px', padding: '1px 3px', border: '1px solid #7f9db9' }} placeholder="Search Party..." />
+          <input 
+            id="f12FilterInput"
+            type="text" 
+            value={filterText} 
+            onChange={function(e) { setFilterText(e.target.value); }} 
+            autoFocus
+            style={{ width: '100px', padding: '1px 3px', border: '1px solid #7f9db9', fontWeight: 'bold' }} 
+            placeholder="Search Party..." 
+          />
         </span>
 
         <button onClick={fetchProfitLoss} style={{ padding: '2px 15px', background: '#ece9d8', border: '1px solid #777', fontWeight: 'bold', cursor: 'pointer' }}>
@@ -274,7 +303,7 @@ export default function ProfitLossF12() {
       <div id="pnl-report-print-area" style={{ flex: 1, background: '#fff', border: '1px solid #7a96df', minHeight: '320px', marginBottom: '8px', overflow: 'auto' }}>
         <table border="1" cellPadding="3" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '10px' }}>
           <thead>
-            <tr style={{ background: '#ece9d8', textAlign: 'center', height: '22px' }}>
+            <tr style={{ background: '#ece9d8', textAlign: 'center', height: '22px', fontWeight: 'bold' }}>
               <th style={{ width: '35px' }}>SrNo</th>
               <th style={{ textAlign: 'left', paddingLeft: '4px' }}>Party</th>
               <th style={{ textAlign: 'left', paddingLeft: '4px' }}>City</th>
@@ -332,7 +361,7 @@ export default function ProfitLossF12() {
               })
             ) : (
               <tr>
-                <td colSpan="15" style={{ textAlign: 'center', padding: '30px', color: '#666', background: '#fff' }}>
+                <td colSpan="15" style={{ textAlign: 'center', padding: '30px', color: '#666', background: '#fff', fontWeight: 'bold' }}>
                   Click <strong>Show</strong> button to load Profit & Loss report.
                 </td>
               </tr>

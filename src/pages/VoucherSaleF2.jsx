@@ -145,7 +145,7 @@ export default function VoucherSaleF2() {
         grandTotal: parsedData.grandTotal
       };
 
-      const response = await fetch('http://localhost:5000/api/whatsapp/batch', {
+      const response = await fetch('https://yantri-desktop.onrender.com/api/whatsapp/batch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -278,7 +278,7 @@ export default function VoucherSaleF2() {
   };
 
   const fetchGlobalGames = () => {
-    fetch('http://localhost:5000/api/games')
+    fetch('https://yantri-desktop.onrender.com/api/games')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.games) && data.games.length > 0) {
@@ -293,7 +293,7 @@ export default function VoucherSaleF2() {
   };
 
   const fetchMasterParties = () => {
-    fetch('http://localhost:5000/api/parties')
+    fetch('https://yantri-desktop.onrender.com/api/parties')
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
@@ -308,7 +308,7 @@ export default function VoucherSaleF2() {
   };
 
   const fetchSavedVouchers = () => {
-    const summaryUrl = 'http://localhost:5000/api/sales/summary?date=' + encodeURIComponent(date) + '&game=' + encodeURIComponent(selectedGame) + '&userId=' + encodeURIComponent(user?.id || '') + '&role=' + encodeURIComponent(user?.role || '');
+    const summaryUrl = 'https://yantri-desktop.onrender.com/api/sales/summary?date=' + encodeURIComponent(date) + '&game=' + encodeURIComponent(selectedGame) + '&userId=' + encodeURIComponent(user?.id || '') + '&role=' + encodeURIComponent(user?.role || '');
     fetch(summaryUrl)
       .then((res) => res.json())
       .then((data) => {
@@ -596,7 +596,7 @@ export default function VoucherSaleF2() {
     setFormErrorMsg('');
     updatePartyRates(voucher);
 
-    fetch('http://localhost:5000/api/sales/details/' + voucher.sale_id)
+    fetch('https://yantri-desktop.onrender.com/api/sales/details/' + voucher.sale_id)
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.items) {
@@ -641,7 +641,7 @@ export default function VoucherSaleF2() {
 
     setFormErrorMsg('⏳ Saving...');
 
-    fetch('http://localhost:5000/api/sales/save', {
+    fetch('https://yantri-desktop.onrender.com/api/sales/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(salePayload)
@@ -678,7 +678,7 @@ export default function VoucherSaleF2() {
 
     setFormErrorMsg('⏳ Updating...');
 
-    fetch('http://localhost:5000/api/sales/update/' + selectedVoucherId, {
+    fetch('https://yantri-desktop.onrender.com/api/sales/update/' + selectedVoucherId, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -714,7 +714,7 @@ export default function VoucherSaleF2() {
 
   const handleDelete = () => {
     if (!selectedVoucherId) return;
-    fetch('http://localhost:5000/api/sales/delete/' + selectedVoucherId, {
+    fetch('https://yantri-desktop.onrender.com/api/sales/delete/' + selectedVoucherId, {
       method: 'DELETE'
     })
       .then((res) => res.json())
@@ -774,7 +774,7 @@ export default function VoucherSaleF2() {
       patti_perc: movePartyRates.patti_perc
     };
 
-    fetch('http://localhost:5000/api/sales/move/' + selectedVoucherId, {
+    fetch('https://yantri-desktop.onrender.com/api/sales/move/' + selectedVoucherId, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)

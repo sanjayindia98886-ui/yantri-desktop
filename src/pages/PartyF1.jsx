@@ -33,8 +33,16 @@ export default function PartyF1({ userRole = 'Admin' }) {
   const normalizedRole = String(userRole || '').toLowerCase();
   const isAdmin = normalizedRole === 'admin' || normalizedRole === 'super_admin' || userRole === 'Admin';
 
+  // Helper to restore focus back to Party Name input
+  const restoreFocus = function() {
+    window.focus();
+    setTimeout(function() {
+      document.getElementById('f1PartyNameInput')?.focus();
+    }, 50);
+  };
+
   const fetchParties = function() {
-    axios.get('http://localhost:5000/api/parties')
+    axios.get('https://yantri-desktop.onrender.com/api/parties')
       .then(function(res) {
         if (Array.isArray(res.data)) {
           setParties(res.data);
@@ -75,6 +83,7 @@ export default function PartyF1({ userRole = 'Admin' }) {
   const handleReset = function() {
     setFormData(initialFormState);
     setSelectedPno(null);
+    restoreFocus();
   };
 
   const handleSave = function(e) {
@@ -82,18 +91,20 @@ export default function PartyF1({ userRole = 'Admin' }) {
 
     if (!isAdmin) {
       alert('Only Admin can add or edit parties!');
+      restoreFocus();
       return;
     }
 
     if (!formData.party_name) {
       alert('Please enter Party Name!');
+      restoreFocus();
       return;
     }
 
     const isEdit = formData.pno !== null && formData.pno !== undefined;
     const apiCall = isEdit 
-      ? axios.put('http://localhost:5000/api/parties', formData)
-      : axios.post('http://localhost:5000/api/parties', formData);
+      ? axios.put('https://yantri-desktop.onrender.com/api/parties', formData)
+      : axios.post('https://yantri-desktop.onrender.com/api/parties', formData);
 
     apiCall
       .then(function(res) {
@@ -103,22 +114,25 @@ export default function PartyF1({ userRole = 'Admin' }) {
           fetchParties();
         } else {
           alert('Failed to save party: ' + (res.data.error || 'Unknown error'));
+          restoreFocus();
         }
       })
       .catch(function(err) {
         console.error('Save error:', err);
         alert('Server Connection Error! Make sure node server is running.');
+        restoreFocus();
       });
   };
 
   const handleDelete = function(pno) {
     if (!isAdmin) {
       alert('Only Admin can delete parties!');
+      restoreFocus();
       return;
     }
 
     if (window.confirm('Are you sure you want to delete this party?')) {
-      axios.delete('http://localhost:5000/api/parties/' + pno)
+      axios.delete('https://yantri-desktop.onrender.com/api/parties/' + pno)
         .then(function(res) {
           if (res.data && res.data.success) {
             alert('Party Deleted Successfully!');
@@ -126,12 +140,16 @@ export default function PartyF1({ userRole = 'Admin' }) {
             fetchParties();
           } else {
             alert('Failed to delete party');
+            restoreFocus();
           }
         })
         .catch(function(err) {
           console.error('Delete error:', err);
           alert('Server Error during deletion!');
+          restoreFocus();
         });
+    } else {
+      restoreFocus();
     }
   };
 
@@ -186,7 +204,15 @@ export default function PartyF1({ userRole = 'Admin' }) {
               {/* Party Name */}
               <div style={{ marginBottom: '3px', display: 'flex', alignItems: 'center' }}>
                 <label style={{ width: '80px', fontWeight: 'bold' }}>Party Name</label>
-                <input type="text" name="party_name" value={formData.party_name} onChange={handleChange} style={{ flex: 1, padding: '1px 3px', border: '1px solid #7f9db9', background: '#fffde7', fontWeight: 'bold' }} />
+                <input 
+                  id="f1PartyNameInput"
+                  type="text" 
+                  name="party_name" 
+                  value={formData.party_name} 
+                  onChange={handleChange} 
+                  autoFocus
+                  style={{ flex: 1, padding: '1px 3px', border: '1px solid #7f9db9', background: '#fffde7', fontWeight: 'bold' }} 
+                />
               </div>
 
               {/* City & Phone */}
@@ -298,7 +324,7 @@ export default function PartyF1({ userRole = 'Admin' }) {
               </div>
             </div>
 
-            {/* Save / Delete Button Container (अब हमेशा स्क्रीन पर फिट रहेगा) */}
+            {/* Save / Delete Button Container */}
             <div style={{ textAlign: 'center', marginTop: '4px', paddingTop: '4px', borderTop: '1px solid #a0a0a0', display: 'flex', justifyContent: 'center', gap: '10px' }}>
               {selectedPno && (
                 <button type="button" onClick={function() { handleDelete(selectedPno); }} style={{ padding: '2px 14px', background: '#ff4d4d', color: '#fff', border: '1px solid #808080', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>

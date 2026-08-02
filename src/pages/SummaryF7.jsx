@@ -39,8 +39,16 @@ export default function SummaryF7() {
     final_net_balance: 0
   });
 
+  // Focus Helper Function
+  const restoreFocus = function() {
+    window.focus();
+    setTimeout(function() {
+      document.getElementById('f7AgentSelect')?.focus();
+    }, 50);
+  };
+
   useEffect(function() {
-    fetch('http://localhost:5000/api/parties')
+    fetch('https://yantri-desktop.onrender.com/api/parties')
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (Array.isArray(data)) {
@@ -56,10 +64,11 @@ export default function SummaryF7() {
   const fetchSummary = function() {
     if (!selectedAgent) {
       alert('Please select an Agent!');
+      restoreFocus();
       return;
     }
 
-    const url = 'http://localhost:5000/api/summary?date=' + encodeURIComponent(date) + 
+    const url = 'https://yantri-desktop.onrender.com/api/summary?date=' + encodeURIComponent(date) + 
                 '&agent=' + encodeURIComponent(selectedAgent) + 
                 '&withoutHissa=' + withoutHissa +
                 '&without3rdPartyComm=' + without3rdPartyComm;
@@ -88,13 +97,16 @@ export default function SummaryF7() {
             today_payment: t.today_payment || 0,
             final_net_balance: t.final_net_balance !== undefined ? t.final_net_balance : (t.opening || 0)
           });
+          restoreFocus();
         } else {
           alert('Error: ' + (data.error || 'Unable to fetch summary'));
+          restoreFocus();
         }
       })
       .catch(function(err) {
         console.error('Error fetching summary:', err);
         alert('Server Connection Error!');
+        restoreFocus();
       });
   };
 
@@ -144,7 +156,13 @@ export default function SummaryF7() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontWeight: 'bold' }}>Select Agent:</span>
-          <select value={selectedAgent} onChange={function(e) { setSelectedAgent(e.target.value); }} style={{ width: '150px', fontSize: '11px', fontWeight: 'bold', border: '1px solid #7f9db9', padding: '1px', background: '#fff' }}>
+          <select 
+            id="f7AgentSelect"
+            value={selectedAgent} 
+            onChange={function(e) { setSelectedAgent(e.target.value); }} 
+            autoFocus
+            style={{ width: '150px', fontSize: '11px', fontWeight: 'bold', border: '1px solid #7f9db9', padding: '1px', background: '#fff' }}
+          >
             <option value="">-- Select Agent --</option>
             {agentsList.map(function(a) {
               return <option key={a.pno || a.id || a.party_name} value={a.party_name}>{a.party_name}</option>;
