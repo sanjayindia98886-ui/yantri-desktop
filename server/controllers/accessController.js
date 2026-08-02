@@ -1,7 +1,7 @@
 const db = require('../config/database');
 
 // Ensure permissions table exists with proper schema and user_id PRIMARY KEY
-db.run(
+db.query(
   "CREATE TABLE IF NOT EXISTS permissions (" +
     "user_id INTEGER PRIMARY KEY, " +
     "f1_party INTEGER DEFAULT 1, " +
@@ -20,7 +20,11 @@ db.run(
     "can_edit_party INTEGER DEFAULT 0, " +
     "can_delete_voucher INTEGER DEFAULT 0, " +
     "f5_sync_mode TEXT DEFAULT 'user'" +
-  ")"
+  ")",
+  [],
+  (err) => {
+    if (err) console.error("Error creating permissions table:", err.message);
+  }
 );
 
 // Helper function to safely evaluate Truthy values (handles true, 1, '1', 'true')
@@ -79,6 +83,7 @@ function getDefaultPermissions(userId, role) {
     f5_sync_mode: 'user'
   };
 }
+
 // 1. Fetch All Users
 const getUsers = (req, res) => {
   const query = "SELECT id, username, role FROM users";
@@ -86,7 +91,7 @@ const getUsers = (req, res) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
-    res.json(result.rows);
+    res.json(result ? result.rows : []);
   });
 };
 
@@ -131,31 +136,31 @@ const updateUserPermissions = (req, res) => {
     "user_id, f1_party, f2_voucher_sale, f3_voucher_yantri, f4_yantri, f5_master, f6_result, " +
     "f7_summary, f8_balance_history, f9_sale_lc, f10_account, f11_balance_sheet, f12_profit_loss, " +
     "game_access, can_edit_party, can_delete_voucher, f5_sync_mode" +
-    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+    ") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) " +
     "ON CONFLICT(user_id) DO UPDATE SET " +
-    "f1_party = excluded.f1_party, " +
-    "f2_voucher_sale = excluded.f2_voucher_sale, " +
-    "f3_voucher_yantri = excluded.f3_voucher_yantri, " +
-    "f4_yantri = excluded.f4_yantri, " +
-    "f5_master = excluded.f5_master, " +
-    "f6_result = excluded.f6_result, " +
-    "f7_summary = excluded.f7_summary, " +
-    "f8_balance_history = excluded.f8_balance_history, " +
-    "f9_sale_lc = excluded.f9_sale_lc, " +
-    "f10_account = excluded.f10_account, " +
-    "f11_balance_sheet = excluded.f11_balance_sheet, " +
-    "f12_profit_loss = excluded.f12_profit_loss, " +
-    "game_access = excluded.game_access, " +
-    "can_edit_party = excluded.can_edit_party, " +
-    "can_delete_voucher = excluded.can_delete_voucher, " +
-    "f5_sync_mode = excluded.f5_sync_mode";
+    "f1_party = EXCLUDED.f1_party, " +
+    "f2_voucher_sale = EXCLUDED.f2_voucher_sale, " +
+    "f3_voucher_yantri = EXCLUDED.f3_voucher_yantri, " +
+    "f4_yantri = EXCLUDED.f4_yantri, " +
+    "f5_master = EXCLUDED.f5_master, " +
+    "f6_result = EXCLUDED.f6_result, " +
+    "f7_summary = EXCLUDED.f7_summary, " +
+    "f8_balance_history = EXCLUDED.f8_balance_history, " +
+    "f9_sale_lc = EXCLUDED.f9_sale_lc, " +
+    "f10_account = EXCLUDED.f10_account, " +
+    "f11_balance_sheet = EXCLUDED.f11_balance_sheet, " +
+    "f12_profit_loss = EXCLUDED.f12_profit_loss, " +
+    "game_access = EXCLUDED.game_access, " +
+    "can_edit_party = EXCLUDED.can_edit_party, " +
+    "can_delete_voucher = EXCLUDED.can_delete_voucher, " +
+    "f5_sync_mode = EXCLUDED.f5_sync_mode";
 
   const params = [
     userId, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12,
     game, editParty, delVoucher, syncMode
   ];
 
-  db.run(upsertQuery, params, function (err) {
+  db.query(upsertQuery, params, (err) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -172,28 +177,29 @@ const createUser = (req, res) => {
   }
 
   const userRole = role ? role.toLowerCase() : 'user';
-  const insertUserQuery = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";
+  const insertUserQuery = "INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id";
 
-  db.run(insertUserQuery, [username.trim(), password.trim(), userRole], function (err) {
+  db.query(insertUserQuery, [username.trim(), password.trim(), userRole], (err, result) => {
     if (err) {
-      if (err.message.includes('UNIQUE')) {
+      if (err.message && err.message.includes('unique')) {
         return res.status(400).json({ error: "Username already exists" });
       }
       return res.status(500).json({ error: err.message });
     }
 
-    const newUserId = this.lastID;
+    const newUserId = result.rows[0].id;
     const isUserRole = userRole === 'user';
     const f5MasterVal = isUserRole ? 1 : 0;
 
     const insertPermQuery =
-      "INSERT OR REPLACE INTO permissions (" +
+      "INSERT INTO permissions (" +
       "user_id, f1_party, f2_voucher_sale, f3_voucher_yantri, f4_yantri, f5_master, " +
       "f6_result, f7_summary, f8_balance_history, f9_sale_lc, f10_account, f11_balance_sheet, " +
       "f12_profit_loss, game_access, can_edit_party, can_delete_voucher, f5_sync_mode" +
-      ") VALUES (?, 1, 1, 0, 0, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'user')";
+      ") VALUES ($1, 1, 1, 0, 0, $2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'user') " +
+      "ON CONFLICT(user_id) DO NOTHING";
 
-    db.run(insertPermQuery, [newUserId, f5MasterVal], function (permErr) {
+    db.query(insertPermQuery, [newUserId, f5MasterVal], (permErr) => {
       if (permErr) {
         console.error("Permission init error:", permErr.message);
       }
@@ -210,22 +216,25 @@ const loginUser = (req, res) => {
     return res.status(400).json({ success: false, message: "Username and password are required" });
   }
 
-  const sqlUser = "SELECT * FROM users WHERE LOWER(TRIM(username)) = LOWER(TRIM(?)) AND password = ?";
-  db.get(sqlUser, [username.trim(), password.trim()], (err, userRow) => {
+  const sqlUser = "SELECT * FROM users WHERE LOWER(TRIM(username)) = LOWER(TRIM($1)) AND password = $2";
+  db.query(sqlUser, [username.trim(), password.trim()], (err, result) => {
     if (err) {
       return res.status(500).json({ success: false, message: err.message });
     }
+
+    const userRow = result && result.rows ? result.rows[0] : null;
 
     if (!userRow) {
       return res.status(401).json({ success: false, message: "Invalid username or password" });
     }
 
-    const sqlPerm = "SELECT * FROM permissions WHERE user_id = ?";
-    db.get(sqlPerm, [userRow.id], (permErr, permRow) => {
+    const sqlPerm = "SELECT * FROM permissions WHERE user_id = $1";
+    db.query(sqlPerm, [userRow.id], (permErr, permResult) => {
       if (permErr) {
         return res.status(500).json({ success: false, message: permErr.message });
       }
 
+      const permRow = permResult && permResult.rows ? permResult.rows[0] : null;
       const finalPerms = normalizePermissions(permRow, userRow.id, userRow.role);
 
       return res.json({
@@ -250,19 +259,21 @@ const changePassword = (req, res) => {
   }
 
   // First verify old password
-  const verifySql = "SELECT * FROM users WHERE id = ? AND password = ?";
-  db.get(verifySql, [userId, oldPassword.trim()], (err, userRow) => {
+  const verifySql = "SELECT * FROM users WHERE id = $1 AND password = $2";
+  db.query(verifySql, [userId, oldPassword.trim()], (err, result) => {
     if (err) {
       return res.status(500).json({ success: false, message: err.message });
     }
+
+    const userRow = result && result.rows ? result.rows[0] : null;
 
     if (!userRow) {
       return res.status(400).json({ success: false, message: "पुराना पासवर्ड गलत है!" });
     }
 
     // Update to new password
-    const updateSql = "UPDATE users SET password = ? WHERE id = ?";
-    db.run(updateSql, [newPassword.trim(), userId], function (updateErr) {
+    const updateSql = "UPDATE users SET password = $1 WHERE id = $2";
+    db.query(updateSql, [newPassword.trim(), userId], (updateErr) => {
       if (updateErr) {
         return res.status(500).json({ success: false, message: updateErr.message });
       }
