@@ -13,7 +13,6 @@ const verifyLicense = async function(req, res) {
       });
     }
 
-    // Single quotes used instead of backticks
     const query = "SELECT *, ROUND(EXTRACT(DAY FROM (expiry_date - CURRENT_TIMESTAMP))) AS days_left FROM licenses WHERE license_key = $1 AND company_id = $2 AND status = 'ACTIVE' AND (expiry_date IS NULL OR expiry_date >= CURRENT_TIMESTAMP)";
     
     const result = await db.query(query, [license_key, company_id]);
@@ -40,14 +39,13 @@ const verifyLicense = async function(req, res) {
   }
 };
 
-// 2. REGISTER / ACTIVATE NEW LICENSE (Sets 1 Year Expiry Automatically)
+// 2. REGISTER / ACTIVATE NEW LICENSE (Auto Sets 1 Year Expiry)
 const registerLicense = async function(req, res) {
   try {
     const body = req.body || {};
     const license_key = body.license_key;
     const company_id = body.company_id;
     const company_name = body.company_name || "My Company";
-    const months = body.validity_months || 12;
 
     if (!license_key || !company_id) {
       return res.status(400).json({
@@ -60,10 +58,10 @@ const registerLicense = async function(req, res) {
     const companyQuery = "INSERT INTO company_config (company_id, company_name) VALUES ($1, $2) ON CONFLICT (company_id) DO UPDATE SET company_name = EXCLUDED.company_name";
     await db.query(companyQuery, [company_id, company_name]);
 
-    // Insert License Key with Activation Date & Expiry Date (No Backticks)
-    const licenseQuery = "INSERT INTO licenses (license_key, company_id, status, activation_date, expiry_date) VALUES ($1, $2, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + ($3 || ' months')::INTERVAL) ON CONFLICT (license_key) DO UPDATE SET status = 'ACTIVE', expiry_date = CURRENT_TIMESTAMP + ($3 || ' months')::INTERVAL";
+    // Insert License Key with Activation Date & Expiry Date (1 Year Interval)
+    const licenseQuery = "INSERT INTO licenses (license_key, company_id, status, activation_date, expiry_date) VALUES ($1, $2, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '1 year') ON CONFLICT (license_key) DO UPDATE SET status = 'ACTIVE', expiry_date = CURRENT_TIMESTAMP + INTERVAL '1 year'";
     
-    await db.query(licenseQuery, [license_key, company_id, months]);
+    await db.query(licenseQuery, [license_key, company_id]);
 
     return res.json({
       success: true,

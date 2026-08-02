@@ -2,11 +2,10 @@ const express = require("express");
 const router = express.Router();
 const licenseController = require("../controllers/licenseController");
 
-// Existing License Routes
+// 1. License Verification Route
 router.post("/verify", licenseController.verifyLicense);
-router.post("/register", licenseController.registerLicense);
 
-// 🆕 New Route: Sabhi Companies ka Days / Expiry Status dekhne ke liye
-router.get("/all-status", licenseController.getAllLicensesStatus);
+// 2. License Registration Route
+router.post("/register", licenseController.registerLicense);
 
 module.exports = router;
