@@ -1,32 +1,5 @@
 const db = require('../config/database');
 
-// Ensure permissions table exists with proper schema and user_id PRIMARY KEY
-db.query(
-  "CREATE TABLE IF NOT EXISTS permissions (" +
-    "user_id INTEGER PRIMARY KEY, " +
-    "f1_party INTEGER DEFAULT 1, " +
-    "f2_voucher_sale INTEGER DEFAULT 1, " +
-    "f3_voucher_yantri INTEGER DEFAULT 0, " +
-    "f4_yantri INTEGER DEFAULT 0, " +
-    "f5_master INTEGER DEFAULT 0, " +
-    "f6_result INTEGER DEFAULT 0, " +
-    "f7_summary INTEGER DEFAULT 0, " +
-    "f8_balance_history INTEGER DEFAULT 0, " +
-    "f9_sale_lc INTEGER DEFAULT 0, " +
-    "f10_account INTEGER DEFAULT 0, " +
-    "f11_balance_sheet INTEGER DEFAULT 0, " +
-    "f12_profit_loss INTEGER DEFAULT 0, " +
-    "game_access INTEGER DEFAULT 0, " +
-    "can_edit_party INTEGER DEFAULT 0, " +
-    "can_delete_voucher INTEGER DEFAULT 0, " +
-    "f5_sync_mode TEXT DEFAULT 'user'" +
-  ")",
-  [],
-  (err) => {
-    if (err) console.error("Error creating permissions table:", err.message);
-  }
-);
-
 // Helper function to safely evaluate Truthy values (handles true, 1, '1', 'true')
 function parseBit(val) {
   if (val === true || val === 1 || val === '1' || val === 'true') {
@@ -187,9 +160,13 @@ const createUser = (req, res) => {
       return res.status(500).json({ error: err.message });
     }
 
-    const newUserId = result.rows[0].id;
+    const newUserId = result && result.rows && result.rows[0] ? result.rows[0].id : null;
     const isUserRole = userRole === 'user';
     const f5MasterVal = isUserRole ? 1 : 0;
+
+    if (!newUserId) {
+      return res.json({ success: true, message: "User created successfully" });
+    }
 
     const insertPermQuery =
       "INSERT INTO permissions (" +
@@ -208,7 +185,7 @@ const createUser = (req, res) => {
   });
 };
 
-// 5. User Login Controller (Guaranteed Permissions)
+// 5. User Login Controller
 const loginUser = (req, res) => {
   const { username, password } = req.body;
 
@@ -217,8 +194,10 @@ const loginUser = (req, res) => {
   }
 
   const sqlUser = "SELECT * FROM users WHERE LOWER(TRIM(username)) = LOWER(TRIM($1)) AND password = $2";
+  
   db.query(sqlUser, [username.trim(), password.trim()], (err, result) => {
     if (err) {
+      console.error("Login Error:", err);
       return res.status(500).json({ success: false, message: err.message });
     }
 
@@ -231,7 +210,7 @@ const loginUser = (req, res) => {
     const sqlPerm = "SELECT * FROM permissions WHERE user_id = $1";
     db.query(sqlPerm, [userRow.id], (permErr, permResult) => {
       if (permErr) {
-        return res.status(500).json({ success: false, message: permErr.message });
+        console.error("Perm Fetch Error:", permErr);
       }
 
       const permRow = permResult && permResult.rows ? permResult.rows[0] : null;
@@ -250,7 +229,7 @@ const loginUser = (req, res) => {
   });
 };
 
-// 6. Change Password Controller (For both Admin & Users)
+// 6. Change Password Controller
 const changePassword = (req, res) => {
   const { userId, oldPassword, newPassword } = req.body;
 
@@ -258,7 +237,6 @@ const changePassword = (req, res) => {
     return res.status(400).json({ success: false, message: "UserId, old password and new password are required" });
   }
 
-  // First verify old password
   const verifySql = "SELECT * FROM users WHERE id = $1 AND password = $2";
   db.query(verifySql, [userId, oldPassword.trim()], (err, result) => {
     if (err) {
@@ -271,7 +249,6 @@ const changePassword = (req, res) => {
       return res.status(400).json({ success: false, message: "पुराना पासवर्ड गलत है!" });
     }
 
-    // Update to new password
     const updateSql = "UPDATE users SET password = $1 WHERE id = $2";
     db.query(updateSql, [newPassword.trim(), userId], (updateErr) => {
       if (updateErr) {
