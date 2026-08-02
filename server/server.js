@@ -20,6 +20,7 @@ const accountRoutes = require('./routes/accountRoutes');          // F10: Accoun
 const gameRoutes = require('./routes/gameRoutes');                // Game Master
 const accessRoutes = require('./routes/accessRoutes');            // Access Control System
 const whatsappRoutes = require('./routes/whatsappRoutes');        // WhatsApp Batch Entry Route
+const licenseRoutes = require('./routes/licenseRoutes');          // Phase 2: License Engine Route
 
 const app = express();
 const server = http.createServer(app);
@@ -44,6 +45,7 @@ app.use('/api/sale-lc', saleLCRoutes);           // F9: Sale LC / Bonus
 app.use('/api/games', gameRoutes);              // Game Master
 app.use('/api/access', accessRoutes);            // Access Control
 app.use('/api/whatsapp', whatsappRoutes);        // WhatsApp Batch Entry
+app.use('/api/license', licenseRoutes);          // Phase 2: License API Route
 
 // Root Test Route
 app.get('/', function(req, res) {
