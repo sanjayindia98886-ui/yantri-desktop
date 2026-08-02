@@ -325,8 +325,26 @@ const db = {
     }
   },
 
-  query: async function(sql, params) {
-    return await pool.query(sql, params);
+  // FIXED QUERY METHOD: Supports both Callbacks and Promises
+  query: async function(sql, params = [], callback) {
+    if (typeof params === "function") {
+      callback = params;
+      params = [];
+    }
+
+    try {
+      const result = await pool.query(sql, params);
+      if (typeof callback === "function") {
+        callback(null, result);
+      }
+      return result;
+    } catch (err) {
+      if (typeof callback === "function") {
+        callback(err, null);
+      } else {
+        throw err;
+      }
+    }
   }
 };
 
