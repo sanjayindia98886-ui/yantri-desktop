@@ -79,26 +79,26 @@ function getDefaultPermissions(userId, role) {
     f5_sync_mode: 'user'
   };
 }
-
 // 1. Fetch All Users
 const getUsers = (req, res) => {
   const query = "SELECT id, username, role FROM users";
-  db.all(query, [], (err, rows) => {
+  db.query(query, [], (err, result) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
-    res.json(rows);
+    res.json(result.rows);
   });
 };
 
 // 2. Fetch Permissions for Selected User (Normalized)
 const getUserPermissions = (req, res) => {
   const userId = req.params.userId;
-  const query = "SELECT * FROM permissions WHERE user_id = ?";
-  db.get(query, [userId], (err, row) => {
+  const query = "SELECT * FROM permissions WHERE user_id = $1";
+  db.query(query, [userId], (err, result) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
+    const row = result && result.rows ? result.rows[0] : null;
     const perms = normalizePermissions(row, Number(userId), 'user');
     res.json(perms);
   });
