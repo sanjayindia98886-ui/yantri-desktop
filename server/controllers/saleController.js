@@ -42,7 +42,7 @@ function buildEntryDateTime(selectedFormDate) {
 }
 
 // 1. Save New Voucher Sale (Pass logged-in operator's UID & Patti Perc)
-const saveVoucherSale = (req, res) => {
+const saveVoucherSale = async (req, res) => {
   const date = String(req.body.date || '').trim();
   const game = String(req.body.game || '').trim();
   const party = String(req.body.party || '').trim();
@@ -68,63 +68,41 @@ const saveVoucherSale = (req, res) => {
   const entryDateTime = buildEntryDateTime(date);
   const thirdPartyHissaStr = hissaParty ? (hissaParty + ' ' + hissaPerc + '%') : '0';
 
-  db.serialize(() => {
-    db.run("BEGIN TRANSACTION");
+  try {
+    const insertSaleQuery = "INSERT INTO sales (sale_date, game_name, party_name, total_amount, uid, entry_date_time, third_party_hissa, d_comm, d_amt, a_comm, a_amt, patti_perc) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING sale_id;";
+    
+    const saleParams = [date, game, party, total_amount, uid, entryDateTime, thirdPartyHissaStr, d_comm, d_amt, a_comm, a_amt, patti_perc];
+    
+    const result = await db.query(insertSaleQuery, saleParams);
+    
+    const insertedSaleId = result.rows && result.rows[0] ? result.rows[0].sale_id : null;
 
-    const insertSaleQuery = "INSERT INTO sales (sale_date, game_name, party_name, total_amount, uid, entry_date_time, third_party_hissa, d_comm, d_amt, a_comm, a_amt, patti_perc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    if (!insertedSaleId) {
+      throw new Error("Supabase did not return inserted sale_id");
+    }
 
-    db.run(insertSaleQuery, [date, game, party, total_amount, uid, entryDateTime, thirdPartyHissaStr, d_comm, d_amt, a_comm, a_amt, patti_perc], function (err) {
-      if (err) {
-        // Fallback 1: If sales table lacks patti_perc column
-        const fallbackQuery1 = "INSERT INTO sales (sale_date, game_name, party_name, total_amount, uid, entry_date_time, third_party_hissa, d_comm, d_amt, a_comm, a_amt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        db.run(fallbackQuery1, [date, game, party, total_amount, uid, entryDateTime, thirdPartyHissaStr, d_comm, d_amt, a_comm, a_amt], function (fbErr1) {
-          if (fbErr1) {
-            // Fallback 2: Basic columns
-            const fallbackQuery2 = "INSERT INTO sales (sale_date, game_name, party_name, total_amount, uid, entry_date_time, third_party_hissa) VALUES (?, ?, ?, ?, ?, ?, ?)";
-            db.run(fallbackQuery2, [date, game, party, total_amount, uid, entryDateTime, thirdPartyHissaStr], function (fbErr2) {
-              if (fbErr2) {
-                db.run("ROLLBACK");
-                return res.status(500).json({ success: false, error: fbErr2.message });
-              }
-              processItems(this.lastID);
-            });
-          } else {
-            processItems(this.lastID);
-          }
-        });
-      } else {
-        processItems(this.lastID);
+    if (items.length > 0) {
+      for (let i = 0; i < items.length; i++) {
+        const numVal = String(items[i].number_val || items[i].no || '').trim();
+        const amtVal = Number(items[i].amount) || 0;
+        const betTypeVal = detectBetType(numVal, items[i].bet_type || items[i].type);
+
+        const itemQuery = "INSERT INTO sale_items (sale_id, number_val, amount, bet_type) VALUES ($1, $2, $3, $4);";
+        await db.query(itemQuery, [insertedSaleId, numVal, amtVal, betTypeVal]);
       }
+    }
 
-      function processItems(saleId) {
-        if (items.length > 0) {
-          const stmt = db.prepare("INSERT INTO sale_items (sale_id, number_val, amount, bet_type) VALUES (?, ?, ?, ?)");
-          for (let i = 0; i < items.length; i++) {
-            const numVal = String(items[i].number_val || items[i].no || '').trim();
-            const amtVal = Number(items[i].amount) || 0;
-            const betTypeVal = detectBetType(numVal, items[i].bet_type || items[i].type);
-
-            stmt.run([saleId, numVal, amtVal, betTypeVal]);
-          }
-          stmt.finalize((stmtErr) => {
-            if (stmtErr) {
-              db.run("ROLLBACK");
-              return res.status(500).json({ success: false, error: stmtErr.message });
-            }
-            db.run("COMMIT", (commitErr) => {
-              if (commitErr) return res.status(500).json({ success: false, error: commitErr.message });
-              return res.json({ success: true, message: 'Voucher Saved Successfully', saleId: saleId, entry_date_time: entryDateTime });
-            });
-          });
-        } else {
-          db.run("COMMIT", (commitErr) => {
-            if (commitErr) return res.status(500).json({ success: false, error: commitErr.message });
-            return res.json({ success: true, message: 'Voucher Saved Successfully', saleId: saleId, entry_date_time: entryDateTime });
-          });
-        }
-      }
+    return res.json({ 
+      success: true, 
+      message: 'Voucher Saved Successfully', 
+      saleId: insertedSaleId, 
+      entry_date_time: entryDateTime 
     });
-  });
+
+  } catch (err) {
+    console.error("Voucher Save Server Error:", err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
 };
 
 // 2. Fetch Summary for Right Side Table
