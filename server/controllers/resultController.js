@@ -1,7 +1,18 @@
 const db = require('../config/database');
 
+// Helper function for DB Queries (Supabase PostgreSQL Compatible)
+const dbQuery = function(sql, params) {
+  if (!params) params = [];
+  return new Promise(function(resolve, reject) {
+    db.query(sql, params, function(err, result) {
+      if (err) reject(err);
+      else resolve(result);
+    });
+  });
+};
+
 // 1. Submit / Update Result (Auto-replace if same date & game exist, no popups)
-const submitResult = (req, res) => {
+const submitResult = async (req, res) => {
   const r = req.body;
   const dateVal = r.date || r.resultDate || r.result_date;
   const gameVal = r.shift || r.game || r.game_name;
@@ -15,120 +26,119 @@ const submitResult = (req, res) => {
   const cleanGame = String(gameVal).trim();
   const cleanWin = String(winVal).trim().padStart(2, '0');
 
-  // Check if result already exists for the same date and game
-  const checkQuery = "SELECT result_id FROM results WHERE LOWER(TRIM(result_date)) = LOWER(TRIM(?)) AND LOWER(TRIM(game_name)) = LOWER(TRIM(?))";
-
-  db.get(checkQuery, [cleanDate, cleanGame], (err, existingRow) => {
-    if (err) {
-      return res.status(500).json({ error: "DB Check Error: " + err.message });
-    }
+  try {
+    // Check if result already exists for the same date and game
+    const checkQuery = "SELECT result_id FROM results WHERE LOWER(TRIM(result_date)) = LOWER(TRIM($1)) AND LOWER(TRIM(game_name)) = LOWER(TRIM($2));";
+    const checkRes = await dbQuery(checkQuery, [cleanDate, cleanGame]);
+    const rows = checkRes ? (checkRes.rows || checkRes) : [];
+    const existingRow = rows && rows.length > 0 ? rows[0] : null;
 
     if (existingRow) {
       // Update existing result automatically without prompting/popups
-      const updateQuery = "UPDATE results SET winning_number = ? WHERE result_id = ?";
-      db.run(updateQuery, [cleanWin, existingRow.result_id], function (uErr) {
-        if (uErr) {
-          return res.status(500).json({ error: "DB Update Error: " + uErr.message });
-        }
-        return res.json({ success: true, message: "Result updated successfully" });
-      });
+      const updateQuery = "UPDATE results SET winning_number = $1 WHERE result_id = $2;";
+      await dbQuery(updateQuery, [cleanWin, existingRow.result_id]);
+      return res.json({ success: true, message: "Result updated successfully" });
     } else {
       // Insert new result if not declared yet
-      const insertQuery = "INSERT INTO results (result_date, game_name, winning_number) VALUES (?, ?, ?)";
-      db.run(insertQuery, [cleanDate, cleanGame, cleanWin], function (iErr) {
-        if (iErr) {
-          return res.status(500).json({ error: "DB Insert Error: " + iErr.message });
-        }
-        return res.json({ success: true, message: "Result submitted successfully" });
-      });
+      const insertQuery = "INSERT INTO results (result_date, game_name, winning_number) VALUES ($1, $2, $3);";
+      await dbQuery(insertQuery, [cleanDate, cleanGame, cleanWin]);
+      return res.json({ success: true, message: "Result submitted successfully" });
     }
-  });
+  } catch (err) {
+    console.error("submitResult Error:", err.message);
+    return res.status(500).json({ error: "DB Processing Error: " + err.message });
+  }
 };
 
 // 2. Get Result History
-const getResultHistory = (req, res) => {
+const getResultHistory = async (req, res) => {
   const { fromDate, toDate } = req.query;
-  let query = "SELECT result_id AS id, result_date AS date, game_name AS shift, winning_number AS result FROM results ORDER BY result_id DESC LIMIT 50";
+  let query = "SELECT result_id AS id, result_date AS date, game_name AS shift, winning_number AS result FROM results ORDER BY result_id DESC LIMIT 50;";
   let params = [];
 
   if (fromDate && toDate) {
-    query = "SELECT result_id AS id, result_date AS date, game_name AS shift, winning_number AS result FROM results WHERE result_date BETWEEN ? AND ? ORDER BY result_id DESC";
+    query = "SELECT result_id AS id, result_date AS date, game_name AS shift, winning_number AS result FROM results WHERE result_date BETWEEN $1 AND $2 ORDER BY result_id DESC;";
     params = [fromDate, toDate];
   }
 
-  db.all(query, params, (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.json(rows || []);
-  });
+  try {
+    const resDb = await dbQuery(query, params);
+    const rows = resDb ? (resDb.rows || resDb) : [];
+    return res.json(rows || []);
+  } catch (err) {
+    console.error("getResultHistory Error:", err.message);
+    return res.status(500).json({ error: err.message });
+  }
 };
 
 // 3. Get Pending Results with Clear / Pending Status (Synced with Game Master)
-const getPendingResults = (req, res) => {
+const getPendingResults = async (req, res) => {
   const dateVal = String(req.query.date || '').trim();
 
-  const gamesQuery = "SELECT game_name FROM games";
-  db.all(gamesQuery, [], (gErr, gameRows) => {
+  try {
     let allGames = ['GB', 'DN', 'FB', 'DS', 'ND', 'PATNA'];
-    if (!gErr && gameRows && gameRows.length > 0) {
-      allGames = gameRows.map(function(g) { return String(g.game_name || '').toUpperCase().trim(); });
+    
+    try {
+      const gamesQuery = "SELECT game_name FROM games;";
+      const gamesRes = await dbQuery(gamesQuery, []);
+      const gameRows = gamesRes ? (gamesRes.rows || gamesRes) : [];
+      if (gameRows && gameRows.length > 0) {
+        allGames = gameRows.map(function(g) { return String(g.game_name || '').toUpperCase().trim(); });
+      }
+    } catch (gErr) {
+      // Fallback to default games list if games table is not present
     }
 
-    const query = "SELECT game_name, winning_number FROM results WHERE LOWER(TRIM(result_date)) = LOWER(TRIM(?))";
-    db.all(query, [dateVal], (err, rows) => {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
+    const query = "SELECT game_name, winning_number FROM results WHERE LOWER(TRIM(result_date)) = LOWER(TRIM($1));";
+    const resDb = await dbQuery(query, [dateVal]);
+    const rows = resDb ? (resDb.rows || resDb) : [];
 
-      const declaredMap = {};
-      (rows || []).forEach(function (r) {
-        const gName = String(r.game_name || '').toUpperCase().trim();
-        declaredMap[gName] = String(r.winning_number || '').padStart(2, '0');
-      });
-
-      const gameStatuses = allGames.map(function (g) {
-        const isDeclared = declaredMap.hasOwnProperty(g);
-        return {
-          shift: g,
-          status: isDeclared ? 'Clear' : 'Pending',
-          isDeclared: isDeclared,
-          winningNumber: isDeclared ? declaredMap[g] : null
-        };
-      });
-
-      res.json(gameStatuses);
+    const declaredMap = {};
+    (rows || []).forEach(function (r) {
+      const gName = String(r.game_name || '').toUpperCase().trim();
+      declaredMap[gName] = String(r.winning_number || '').padStart(2, '0');
     });
-  });
+
+    const gameStatuses = allGames.map(function (g) {
+      const isDeclared = Object.prototype.hasOwnProperty.call(declaredMap, g);
+      return {
+        shift: g,
+        status: isDeclared ? 'Clear' : 'Pending',
+        isDeclared: isDeclared,
+        winningNumber: isDeclared ? declaredMap[g] : null
+      };
+    });
+
+    return res.json(gameStatuses);
+  } catch (err) {
+    console.error("getPendingResults Error:", err.message);
+    return res.status(500).json({ error: err.message });
+  }
 };
 
 // 4. Delete Result by ID or Date+Game
-const deleteResult = (req, res) => {
+const deleteResult = async (req, res) => {
   const resultId = req.params.id;
   const dateVal = req.query.date || req.body.date;
   const gameVal = req.query.game || req.body.game || req.query.shift || req.body.shift;
 
-  if (resultId && resultId !== 'undefined' && resultId !== 'null') {
-    const deleteQuery = "DELETE FROM results WHERE result_id = ?";
-    db.run(deleteQuery, [resultId], function (err) {
-      if (err) {
-        return res.status(500).json({ success: false, error: err.message });
-      }
+  try {
+    if (resultId && resultId !== 'undefined' && resultId !== 'null') {
+      const deleteQuery = "DELETE FROM results WHERE result_id = $1;";
+      await dbQuery(deleteQuery, [resultId]);
       return res.json({ success: true, message: "Result deleted successfully" });
-    });
-  } else if (dateVal && gameVal) {
-    const cleanDate = String(dateVal).trim();
-    const cleanGame = String(gameVal).trim();
-    const deleteQueryByGame = "DELETE FROM results WHERE LOWER(TRIM(result_date)) = LOWER(TRIM(?)) AND LOWER(TRIM(game_name)) = LOWER(TRIM(?))";
-    
-    db.run(deleteQueryByGame, [cleanDate, cleanGame], function (err) {
-      if (err) {
-        return res.status(500).json({ success: false, error: err.message });
-      }
+    } else if (dateVal && gameVal) {
+      const cleanDate = String(dateVal).trim();
+      const cleanGame = String(gameVal).trim();
+      const deleteQueryByGame = "DELETE FROM results WHERE LOWER(TRIM(result_date)) = LOWER(TRIM($1)) AND LOWER(TRIM(game_name)) = LOWER(TRIM($2));";
+      await dbQuery(deleteQueryByGame, [cleanDate, cleanGame]);
       return res.json({ success: true, message: "Result deleted successfully" });
-    });
-  } else {
-    return res.status(400).json({ success: false, error: "Result ID or Date/Game parameters required" });
+    } else {
+      return res.status(400).json({ success: false, error: "Result ID or Date/Game parameters required" });
+    }
+  } catch (err) {
+    console.error("deleteResult Error:", err.message);
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
 

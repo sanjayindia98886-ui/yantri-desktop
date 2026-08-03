@@ -1,25 +1,30 @@
 const db = require('../config/database');
 
-// Helper function for DB Queries (Promises)
-const dbRun = function(sql, params) {
+// Helper function for DB Queries (Supabase PostgreSQL Compatible)
+const dbQuery = function(sql, params) {
   if (!params) params = [];
   return new Promise(function(resolve, reject) {
-    db.run(sql, params, function(err) {
+    db.query(sql, params, function(err, result) {
       if (err) reject(err);
-      else resolve(this);
+      else resolve(result);
     });
   });
 };
 
-const dbAll = function(sql, params) {
-  if (!params) params = [];
-  return new Promise(function(resolve, reject) {
-    db.all(sql, params, function(err, rows) {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
-};
+// Helper for formatted timestamp
+function getCurrentFormattedDateTime() {
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const year = now.getFullYear();
+  let hours = now.getHours();
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const timeStr = String(hours).padStart(2, '0') + ':' + minutes + ' ' + ampm;
+  return day + '/' + month + '/' + year + ' ' + timeStr;
+}
 
 // 1. Upload Local Sale to Staging Table (User Action - Complete Voucher & Items Sync)
 exports.uploadSale = async function(req, res) {
@@ -40,6 +45,7 @@ exports.uploadSale = async function(req, res) {
 
     const fallbackUserId = userId || (req.user && req.user.id) || '1';
     const fallbackShift = shift || '1';
+    const currentDateTime = getCurrentFormattedDateTime();
 
     for (let i = 0; i < vouchers.length; i++) {
       const v = vouchers[i];
@@ -47,8 +53,7 @@ exports.uploadSale = async function(req, res) {
       const partyName = v.partyName || v.party_name || v.pname || 'Unknown';
       const amount = v.amount || v.total_amount || 0;
 
-      const pendingQuery = "INSERT INTO pending_sales (sale_date, game_name, uid, shift, party_id, party_name, total_amount, voucher_data, status, uploaded_on) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', DATETIME('now', 'localtime'))";
+      const pendingQuery = "INSERT INTO pending_sales (sale_date, game_name, uid, shift, party_id, party_name, total_amount, voucher_data, status, uploaded_on) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING', CURRENT_TIMESTAMP);";
       
       const voucherJsonStr = typeof v === 'object' ? JSON.stringify(v) : v;
 
@@ -63,18 +68,19 @@ exports.uploadSale = async function(req, res) {
         voucherJsonStr
       ];
 
-      await dbRun(pendingQuery, pendingParams);
+      await dbQuery(pendingQuery, pendingParams);
     }
 
     // Insert entry into upload logs
-    const logQuery = "INSERT INTO upload_logs (sale_date, game_name, uid, shift, entry_date_time) VALUES (?, ?, ?, ?, DATETIME('now', 'localtime'))";
+    const logQuery = "INSERT INTO upload_logs (sale_date, game_name, uid, shift, entry_date_time) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP);";
     const logParams = [date, game, fallbackUserId, fallbackShift];
 
-    await dbRun(logQuery, logParams);
+    await dbQuery(logQuery, logParams);
 
     const successMsg = 'Sale uploaded successfully for ' + game + ' (' + date + ')';
     return res.status(200).json({ status: true, message: successMsg });
   } catch (error) {
+    console.error("uploadSale Error:", error.message);
     return res.status(500).json({ status: false, message: error.message });
   }
 };
@@ -90,20 +96,20 @@ exports.uploadParty = async function(req, res) {
     for (let i = 0; i < parties.length; i++) {
       const p = parties[i];
       const partyQuery = "INSERT INTO server_parties (pno, party_name, opening_balance, d_comm, d_amt, a_comm, a_amt, patti_perc, lc_perc, hissa_party, hissa_patti_perc, override_lc_party, override_lc_perc) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+        "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) " +
         "ON CONFLICT(pno) DO UPDATE SET " +
-        "party_name = excluded.party_name, " +
-        "opening_balance = excluded.opening_balance, " +
-        "d_comm = excluded.d_comm, " +
-        "d_amt = excluded.d_amt, " +
-        "a_comm = excluded.a_comm, " +
-        "a_amt = excluded.a_amt, " +
-        "patti_perc = excluded.patti_perc, " +
-        "lc_perc = excluded.lc_perc, " +
-        "hissa_party = excluded.hissa_party, " +
-        "hissa_patti_perc = excluded.hissa_patti_perc, " +
-        "override_lc_party = excluded.override_lc_party, " +
-        "override_lc_perc = excluded.override_lc_perc";
+        "party_name = EXCLUDED.party_name, " +
+        "opening_balance = EXCLUDED.opening_balance, " +
+        "d_comm = EXCLUDED.d_comm, " +
+        "d_amt = EXCLUDED.d_amt, " +
+        "a_comm = EXCLUDED.a_comm, " +
+        "a_amt = EXCLUDED.a_amt, " +
+        "patti_perc = EXCLUDED.patti_perc, " +
+        "lc_perc = EXCLUDED.lc_perc, " +
+        "hissa_party = EXCLUDED.hissa_party, " +
+        "hissa_patti_perc = EXCLUDED.hissa_patti_perc, " +
+        "override_lc_party = EXCLUDED.override_lc_party, " +
+        "override_lc_perc = EXCLUDED.override_lc_perc;";
       
       const partyParams = [
         p.pno || p.id, 
@@ -121,11 +127,12 @@ exports.uploadParty = async function(req, res) {
         p.override_lc_perc || 0
       ];
 
-      await dbRun(partyQuery, partyParams);
+      await dbQuery(partyQuery, partyParams);
     }
 
     return res.status(200).json({ status: true, message: 'Parties synced to server successfully.' });
   } catch (error) {
+    console.error("uploadParty Error:", error.message);
     return res.status(500).json({ status: false, message: error.message });
   }
 };
@@ -133,13 +140,26 @@ exports.uploadParty = async function(req, res) {
 // 3. Download F1 Party Accounts from Server (User Action - Full Master Sync)
 exports.downloadParty = async function(req, res) {
   try {
-    const serverParties = await dbAll("SELECT * FROM server_parties");
+    const result = await dbQuery("SELECT * FROM server_parties;");
+    const serverParties = result ? (result.rows || result) : [];
     
     for (let i = 0; i < serverParties.length; i++) {
       const p = serverParties[i];
       
-      const syncQuery = "INSERT OR REPLACE INTO parties (pno, party_name, opening_balance, d_comm, d_amt, a_comm, a_amt, patti_perc, lc_perc, hissa_party, hissa_patti_perc, override_lc_party, override_lc_perc) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+      const syncQuery = "INSERT INTO parties (pno, party_name, opening_balance, d_comm, d_amt, a_comm, a_amt, patti_perc, lc_perc, hissa_party, hissa_patti_perc, override_lc_party, override_lc_perc) " +
+        "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) " +
+        "ON CONFLICT(company_id, party_name) DO UPDATE SET " +
+        "opening_balance = EXCLUDED.opening_balance, " +
+        "d_comm = EXCLUDED.d_comm, " +
+        "d_amt = EXCLUDED.d_amt, " +
+        "a_comm = EXCLUDED.a_comm, " +
+        "a_amt = EXCLUDED.a_amt, " +
+        "patti_perc = EXCLUDED.patti_perc, " +
+        "lc_perc = EXCLUDED.lc_perc, " +
+        "hissa_party = EXCLUDED.hissa_party, " +
+        "hissa_patti_perc = EXCLUDED.hissa_patti_perc, " +
+        "override_lc_party = EXCLUDED.override_lc_party, " +
+        "override_lc_perc = EXCLUDED.override_lc_perc;";
       
       const params = [
         p.pno, 
@@ -157,7 +177,7 @@ exports.downloadParty = async function(req, res) {
         p.override_lc_perc || 0
       ];
 
-      await dbRun(syncQuery, params);
+      await dbQuery(syncQuery, params);
     }
 
     return res.status(200).json({ 
@@ -166,6 +186,7 @@ exports.downloadParty = async function(req, res) {
       parties: serverParties 
     });
   } catch (error) {
+    console.error("downloadParty Error:", error.message);
     return res.status(500).json({ status: false, message: error.message });
   }
 };
@@ -176,8 +197,9 @@ exports.downloadSale = async function(req, res) {
     const date = req.body.date;
     const game = req.body.game;
 
-    const selectQuery = "SELECT * FROM pending_sales WHERE LOWER(TRIM(sale_date)) = LOWER(TRIM(?)) AND UPPER(TRIM(game_name)) = UPPER(TRIM(?)) AND status = 'PENDING'";
-    const pendingSales = await dbAll(selectQuery, [date, game]);
+    const selectQuery = "SELECT * FROM pending_sales WHERE LOWER(TRIM(sale_date)) = LOWER(TRIM($1)) AND UPPER(TRIM(game_name)) = UPPER(TRIM($2)) AND status = 'PENDING';";
+    const selectRes = await dbQuery(selectQuery, [date, game]);
+    const pendingSales = selectRes ? (selectRes.rows || selectRes) : [];
 
     if (!pendingSales || pendingSales.length === 0) {
       return res.status(400).json({ status: false, message: 'No pending sales found for selected Date & Game.' });
@@ -193,9 +215,9 @@ exports.downloadSale = async function(req, res) {
         vData = {};
       }
 
-      // 1. Insert into main 'sales' table
+      // 1. Insert into main 'sales' table with RETURNING sale_id
       const insertSaleQuery = "INSERT INTO sales (sale_date, game_name, uid, shift, party_name, total_amount, d_comm, d_amt, a_comm, a_amt, patti_perc, entry_date_time) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING sale_id;";
       
       const insertParams = [
         pending.sale_date, 
@@ -209,19 +231,23 @@ exports.downloadSale = async function(req, res) {
         vData.a_comm || null,
         vData.a_amt || null,
         vData.patti_perc || null,
-        pending.uploaded_on
+        pending.uploaded_on ? String(pending.uploaded_on) : getCurrentFormattedDateTime()
       ];
 
-      const result = await dbRun(insertSaleQuery, insertParams);
-      const insertedSaleId = result.lastID; // Newly generated sale_id
+      const saleResult = await dbQuery(insertSaleQuery, insertParams);
+      const insertedSaleId = saleResult.rows && saleResult.rows[0] ? saleResult.rows[0].sale_id : null;
 
-      // 2. Insert into 'sale_items' (For F7/F11/F12 Automatic Calculation)
+      if (!insertedSaleId) {
+        throw new Error("Failed to return sale_id from Supabase during download");
+      }
+
+      // 2. Insert into 'sale_items'
       const items = vData.items || vData.bets || vData.sale_items || [];
       if (Array.isArray(items) && items.length > 0) {
         for (let j = 0; j < items.length; j++) {
           const item = items[j];
-          const itemQuery = "INSERT INTO sale_items (sale_id, number_val, amount, bet_type) VALUES (?, ?, ?, ?)";
-          await dbRun(itemQuery, [
+          const itemQuery = "INSERT INTO sale_items (sale_id, number_val, amount, bet_type) VALUES ($1, $2, $3, $4);";
+          await dbQuery(itemQuery, [
             insertedSaleId, 
             item.number_val || item.number || item.num, 
             item.amount || item.amt || 0, 
@@ -232,12 +258,13 @@ exports.downloadSale = async function(req, res) {
     }
 
     // Mark pending_sales as PROCESSED
-    const updateStatusQuery = "UPDATE pending_sales SET status = 'PROCESSED' WHERE LOWER(TRIM(sale_date)) = LOWER(TRIM(?)) AND UPPER(TRIM(game_name)) = UPPER(TRIM(?))";
-    await dbRun(updateStatusQuery, [date, game]);
+    const updateStatusQuery = "UPDATE pending_sales SET status = 'PROCESSED' WHERE LOWER(TRIM(sale_date)) = LOWER(TRIM($1)) AND UPPER(TRIM(game_name)) = UPPER(TRIM($2));";
+    await dbQuery(updateStatusQuery, [date, game]);
 
     const msg = 'Server sales downloaded and posted to Party Ledgers with items for ' + game + ' (' + date + ')';
     return res.status(200).json({ status: true, message: msg });
   } catch (error) {
+    console.error("downloadSale Error:", error.message);
     return res.status(500).json({ status: false, message: error.message });
   }
 };
@@ -245,7 +272,7 @@ exports.downloadSale = async function(req, res) {
 // 5. Delete Downloaded Vouchers Cache
 exports.deleteDownloadedVouchers = async function(req, res) {
   try {
-    await dbRun("DELETE FROM pending_sales WHERE status = 'PROCESSED'");
+    await dbQuery("DELETE FROM pending_sales WHERE status = 'PROCESSED';");
     return res.status(200).json({ status: true, message: 'Downloaded vouchers cleared.' });
   } catch (error) {
     return res.status(500).json({ status: false, message: error.message });
@@ -256,7 +283,7 @@ exports.deleteDownloadedVouchers = async function(req, res) {
 exports.deleteSaleWithOpening = async function(req, res) {
   try {
     const tillDate = req.body.tillDate;
-    await dbRun("DELETE FROM sales WHERE sale_date <= ?", [tillDate]);
+    await dbQuery("DELETE FROM sales WHERE sale_date <= $1;", [tillDate]);
     
     const msg = 'Sales deleted up to ' + tillDate + '. Opening balances preserved.';
     return res.status(200).json({ status: true, message: msg });
@@ -272,15 +299,16 @@ exports.deleteSaleWithoutOpening = async function(req, res) {
     const tillDate = req.body.tillDate;
     const partyId = req.body.partyId;
 
-    let query = "DELETE FROM sales WHERE sale_date <= ?";
+    let query = "DELETE FROM sales WHERE sale_date <= $1";
     let params = [tillDate];
 
     if (type === 'Selected Party' && partyId) {
-      query = query + " AND party_name IN (SELECT party_name FROM parties WHERE pno = ? OR id = ?)";
+      query = query + " AND party_name IN (SELECT party_name FROM parties WHERE pno = $2 OR id = $3)";
       params.push(partyId, partyId);
     }
 
-    await dbRun(query, params);
+    query = query + ";";
+    await dbQuery(query, params);
     return res.status(200).json({ status: true, message: 'Sales deleted without changing opening balance.' });
   } catch (error) {
     return res.status(500).json({ status: false, message: error.message });
@@ -297,11 +325,12 @@ exports.deleteAccount = async function(req, res) {
     let params = [];
 
     if (type === 'Selected Party' && partyId) {
-      query = query + " WHERE pno = ? OR id = ?";
+      query = query + " WHERE pno = $1 OR id = $2";
       params.push(partyId, partyId);
     }
 
-    await dbRun(query, params);
+    query = query + ";";
+    await dbQuery(query, params);
     return res.status(200).json({ status: true, message: 'Account(s) deleted successfully.' });
   } catch (error) {
     return res.status(500).json({ status: false, message: error.message });
@@ -318,10 +347,11 @@ exports.getUserSaleSummary = async function(req, res) {
     const gameName = String(game || '').trim().toUpperCase();
 
     const query = "SELECT uid AS userId, SUM(total_amount) AS amount FROM pending_sales " +
-      "WHERE LOWER(TRIM(sale_date)) = LOWER(TRIM(?)) AND UPPER(TRIM(game_name)) = ? " +
-      "GROUP BY uid ORDER BY uid ASC";
+      "WHERE LOWER(TRIM(sale_date)) = LOWER(TRIM($1)) AND UPPER(TRIM(game_name)) = $2 " +
+      "GROUP BY uid ORDER BY uid ASC;";
 
-    const rows = await dbAll(query, [saleDate, gameName]);
+    const resDb = await dbQuery(query, [saleDate, gameName]);
+    const rows = resDb ? (resDb.rows || resDb) : [];
     let total = 0;
     
     const summary = (rows || []).map(function(row) {
@@ -345,17 +375,20 @@ exports.getUserSaleLogs = async function(req, res) {
     const logDate = String(date || '').trim();
     const currentShift = String(shift || '').trim();
 
-    const allUsers = await dbAll("SELECT username AS userId FROM users WHERE LOWER(role) = 'user' ORDER BY username ASC");
+    const usersRes = await dbQuery("SELECT username AS userId FROM users WHERE LOWER(role) = 'user' ORDER BY username ASC;");
+    const allUsers = usersRes ? (usersRes.rows || usersRes) : [];
 
-    let logQuery = "SELECT sale_date AS saleDate, shift, uid AS userId, entry_date_time AS uploadedOn FROM upload_logs WHERE LOWER(TRIM(sale_date)) = LOWER(TRIM(?))";
+    let logQuery = "SELECT sale_date AS saleDate, shift, uid AS userId, entry_date_time AS uploadedOn FROM upload_logs WHERE LOWER(TRIM(sale_date)) = LOWER(TRIM($1))";
     let logParams = [logDate];
 
     if (currentShift) {
-      logQuery = logQuery + " AND LOWER(TRIM(shift)) = LOWER(TRIM(?))";
+      logQuery = logQuery + " AND LOWER(TRIM(shift)) = LOWER(TRIM($2))";
       logParams.push(currentShift);
     }
 
-    const uploadedRows = await dbAll(logQuery, logParams);
+    logQuery = logQuery + ";";
+    const logsRes = await dbQuery(logQuery, logParams);
+    const uploadedRows = logsRes ? (logsRes.rows || logsRes) : [];
 
     const logs = (allUsers || []).map(function(u) {
       const found = (uploadedRows || []).find(function(row) {
