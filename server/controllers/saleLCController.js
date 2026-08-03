@@ -1,34 +1,4 @@
-[12:53 am, 3/8/2026] P: const { Pool } = require("pg");
-require("dotenv").config();
-
-// Supabase PostgreSQL Connection Pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
-
-// Test Connection
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error("❌ Supabase PostgreSQL Connection Error:", err.stack);
-  } else {
-    console.log("🚀 Connected to Supabase PostgreSQL Database Successfully!");
-    release();
-  }
-});
-
-// Database Migration & Table Setup Logic
-const initDatabase = async () => {
-  try {
-    // 1. Company Config Table
-    await pool.query(
-      "CREATE TABLE IF NOT EXISTS company_config (" +
-        "id SERIAL PRIMARY KEY, " +
-        "company_id VARCHAR(100) UNIQUE NOT NULL, " +
-        …
-[12:55 am, 3/8/2026] P: var db = require('../config/database');
+var db = require('../config/database');
 
 // 0. Ensure Posted LC Table Exists (PostgreSQL Compatible)
 db.run("CREATE TABLE IF NOT EXISTS posted_lc_entries (" +
