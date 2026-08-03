@@ -1,4 +1,28 @@
-const db = require('../config/database');
+[1:01 am, 3/8/2026] P: const db = require('../config/database');
+
+// Date conversion helper (DD/MM/YYYY -> YYYY-MM-DD for accurate date range filtering)
+function toIsoDate(dateStr) {
+  if (!dateStr) return '';
+  const str = String(dateStr).trim();
+  if (str.indexOf('/') !== -1) {
+    const parts = str.split('/');
+    if (parts.length === 3) {
+      const dd = parts[0].padStart(2, '0');
+      const mm = parts[1].padStart(2, '0');
+      const yyyy = parts[2];
+      return yyyy + '-' + mm + '-' + dd;
+    }
+  }
+  return str;
+}
+
+// 1. Fetch History Entries for F10 Grid
+const getAccountHistory = function(req, res) {
+  try {
+    const party = String(req.query.party || 'All').trim();
+    const type = String(req.query.type || 'All').trim();
+    const fromDateRaw = String(req.query.fromDate…
+[1:02 am, 3/8/2026] P: const db = require('../config/database');
 
 // Date conversion helper (DD/MM/YYYY -> YYYY-MM-DD for accurate date range filtering)
 function toIsoDate(dateStr) {
@@ -24,19 +48,19 @@ const getAccountHistory = function(req, res) {
     const fromDateRaw = String(req.query.fromDate || '').trim();
     const toDateRaw = String(req.query.toDate || '').trim();
 
-    let query = 'SELECT entry_id AS acc_id, entry_date AS date_val, party_name, ' +
-      'description, debit_amt, credit_amt ' +
-      'FROM ledger_entries WHERE 1=1 ';
+    let query = "SELECT entry_id AS acc_id, entry_date AS date_val, party_name, " +
+      "description, debit_amt, credit_amt " +
+      "FROM ledger_entries WHERE 1=1 ";
     
     const params = [];
 
     // Filter by Party
     if (party !== 'All' && party !== '') {
-      query += 'AND LOWER(TRIM(party_name)) = LOWER(TRIM(?)) ';
+      query += "AND LOWER(TRIM(party_name)) = LOWER(TRIM($1)) ";
       params.push(party);
     }
 
-    query += 'ORDER BY entry_id DESC';
+    query += "ORDER BY entry_id DESC;";
 
     db.all(query, params, function(err, rows) {
       if (err) {
@@ -140,9 +164,9 @@ const saveAccountEntry = function(req, res) {
 
     if (acc_id) {
       // Update Existing Entry
-      const updateQuery = 'UPDATE ledger_entries SET ' +
-        'entry_date = ?, party_name = ?, description = ?, debit_amt = ?, credit_amt = ? ' +
-        'WHERE entry_id = ?';
+      const updateQuery = "UPDATE ledger_entries SET " +
+        "entry_date = $1, party_name = $2, description = $3, debit_amt = $4, credit_amt = $5 " +
+        "WHERE entry_id = $6;";
 
       db.run(updateQuery, [date_val, party_name, mainDesc, debitAmt, creditAmt, acc_id], function(err) {
         if (err) return res.status(500).json({ success: false, error: err.message });
@@ -150,9 +174,9 @@ const saveAccountEntry = function(req, res) {
       });
     } else {
       // Insert Main Entry
-      const insertQuery = 'INSERT INTO ledger_entries ' +
-        '(entry_date, party_name, description, debit_amt, credit_amt) ' +
-        'VALUES (?, ?, ?, ?, ?)';
+      const insertQuery = "INSERT INTO ledger_entries " +
+        "(entry_date, party_name, description, debit_amt, credit_amt) " +
+        "VALUES ($1, $2, $3, $4, $5);";
 
       db.run(insertQuery, [date_val, party_name, mainDesc, debitAmt, creditAmt], function(err) {
         if (err) return res.status(500).json({ success: false, error: err.message });
@@ -185,7 +209,7 @@ const deleteAccountEntry = function(req, res) {
       return res.status(400).json({ success: false, error: 'Entry ID is required' });
     }
 
-    const deleteQuery = 'DELETE FROM ledger_entries WHERE entry_id = ?';
+    const deleteQuery = "DELETE FROM ledger_entries WHERE entry_id = $1;";
     db.run(deleteQuery, [acc_id], function(err) {
       if (err) return res.status(500).json({ success: false, error: err.message });
       return res.json({ success: true, message: 'Transaction deleted successfully' });

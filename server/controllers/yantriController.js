@@ -76,10 +76,11 @@ const getYantriGridData = (req, res) => {
       'FROM sales s ' +
       'JOIN sale_items si ON s.sale_id = si.sale_id ' +
       'LEFT JOIN parties p ON LOWER(TRIM(s.party_name)) = LOWER(TRIM(p.party_name)) ' +
-      'WHERE LOWER(TRIM(s.sale_date)) = LOWER(TRIM(?)) ' +
-      'AND UPPER(TRIM(s.game_name)) = UPPER(TRIM(?))';
+      'WHERE LOWER(TRIM(s.sale_date)) = LOWER(TRIM($1)) ' +
+      'AND UPPER(TRIM(s.game_name)) = UPPER(TRIM($2))';
 
     const queryParams = [queryDate, queryGame];
+    let paramIndex = 3;
 
     const upperParty = partyName.toUpperCase();
     if (
@@ -87,20 +88,25 @@ const getYantriGridData = (req, res) => {
       !upperParty.includes('ALL PARTIES') &&
       !upperParty.includes('-- ALL PARTIES --')
     ) {
-      salesQuery += ' AND LOWER(TRIM(s.party_name)) = LOWER(TRIM(?))';
+      salesQuery += ' AND LOWER(TRIM(s.party_name)) = LOWER(TRIM($' + paramIndex + '))';
       queryParams.push(partyName.trim());
+      paramIndex++;
     }
 
     // User Data Isolation
     if (userRole !== 'super_admin') {
       if (userId) {
-        salesQuery += ' AND LOWER(TRIM(s.uid)) = LOWER(TRIM(?))';
+        salesQuery += ' AND LOWER(TRIM(s.uid)) = LOWER(TRIM($' + paramIndex + '))';
         queryParams.push(userId);
+        paramIndex++;
       }
     } else if (filterUserId && filterUserId.toUpperCase() !== 'ALL') {
-      salesQuery += ' AND LOWER(TRIM(s.uid)) = LOWER(TRIM(?))';
+      salesQuery += ' AND LOWER(TRIM(s.uid)) = LOWER(TRIM($' + paramIndex + '))';
       queryParams.push(filterUserId);
+      paramIndex++;
     }
+
+    salesQuery += ';';
 
     db.all(salesQuery, queryParams, function(err, rows) {
       if (err) {
@@ -176,17 +182,17 @@ const traceClientByAmt = (req, res) => {
     const traceQuery = 'SELECT s.party_name, SUM(si.amount) as total_amt ' +
       'FROM sales s ' +
       'JOIN sale_items si ON s.sale_id = si.sale_id ' +
-      'WHERE LOWER(TRIM(s.sale_date)) = LOWER(TRIM(?)) ' +
-      'AND UPPER(TRIM(s.game_name)) = UPPER(TRIM(?)) ' +
+      'WHERE LOWER(TRIM(s.sale_date)) = LOWER(TRIM($1)) ' +
+      'AND UPPER(TRIM(s.game_name)) = UPPER(TRIM($2)) ' +
       'GROUP BY s.party_name ' +
-      'HAVING total_amt >= ? ' +
-      'ORDER BY total_amt DESC LIMIT 1';
+      'HAVING SUM(si.amount) >= $3 ' +
+      'ORDER BY total_amt DESC LIMIT 1;';
 
-    db.get(traceQuery, [queryDate, queryGame, targetAmt], function(err, row) {
-      if (err || !row) {
+    db.all(traceQuery, [queryDate, queryGame, targetAmt], function(err, rows) {
+      if (err || !rows || rows.length === 0) {
         return res.json({ success: false, party_name: 'Party Not Found' });
       }
-      return res.json({ success: true, party_name: row.party_name });
+      return res.json({ success: true, party_name: rows[0].party_name });
     });
   } catch (error) {
     return res.status(500).json({ success: false, party_name: '' });

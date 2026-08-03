@@ -16,14 +16,14 @@ const getSummary = function (req, res) {
     const currentAgentNorm = agentName.toLowerCase().trim();
 
     // 1. Fetch All Games
-    db.all("SELECT game_name FROM games", [], function (gErr, gameRows) {
+    db.all("SELECT game_name FROM games;", [], function (gErr, gameRows) {
       let allGames = ['GB', 'DN', 'FB', 'DS', 'ND', 'PATNA'];
       if (!gErr && gameRows && gameRows.length > 0) {
         allGames = gameRows.map(function (g) { return String(g.game_name || '').toUpperCase().trim(); });
       }
 
       // 2. Fetch ALL Parties to build 3rd Party LC & Hissa relationships
-      db.all('SELECT * FROM parties', [], function (err, allPartiesRows) {
+      db.all("SELECT * FROM parties;", [], function (err, allPartiesRows) {
         if (err) return res.status(500).json({ success: false, error: err.message });
 
         const allParties = allPartiesRows || [];
@@ -39,7 +39,7 @@ const getSummary = function (req, res) {
         const defaultPatti = partyMaster ? (Number(partyMaster.patti_perc) || 0) : 0;
 
         // 3. Fetch Game Results
-        const resultQuery = 'SELECT game_name, winning_number, result_date FROM results';
+        const resultQuery = "SELECT game_name, winning_number, result_date FROM results;";
         db.all(resultQuery, [], function (resErr, resultsList) {
           if (resErr) return res.status(500).json({ success: false, error: resErr.message });
 
@@ -52,17 +52,17 @@ const getSummary = function (req, res) {
           });
 
           // 4. Fetch Sales Data
-          const salesQuery = 'SELECT s.sale_id, s.party_name, s.game_name, s.sale_date, ' +
-            'COALESCE(s.d_comm, p.d_comm) AS d_comm, ' +
-            'COALESCE(s.d_amt, p.d_amt) AS d_amt, ' +
-            'COALESCE(s.a_comm, p.a_comm) AS a_comm, ' +
-            'COALESCE(s.a_amt, p.a_amt) AS a_amt, ' +
-            'COALESCE(s.patti_perc, p.patti_perc) AS patti_perc, ' +
-            'si.number_val, si.amount, si.bet_type ' +
-            'FROM sales s ' +
-            'JOIN sale_items si ON s.sale_id = si.sale_id ' +
-            'LEFT JOIN parties p ON LOWER(TRIM(s.party_name)) = LOWER(TRIM(p.party_name)) ' +
-            'WHERE LOWER(TRIM(s.party_name)) = LOWER(TRIM(?))';
+          const salesQuery = "SELECT s.sale_id, s.party_name, s.game_name, s.sale_date, " +
+            "COALESCE(s.d_comm, p.d_comm) AS d_comm, " +
+            "COALESCE(s.d_amt, p.d_amt) AS d_amt, " +
+            "COALESCE(s.a_comm, p.a_comm) AS a_comm, " +
+            "COALESCE(s.a_amt, p.a_amt) AS a_amt, " +
+            "COALESCE(s.patti_perc, p.patti_perc) AS patti_perc, " +
+            "si.number_val, si.amount, si.bet_type " +
+            "FROM sales s " +
+            "JOIN sale_items si ON s.sale_id = si.sale_id " +
+            "LEFT JOIN parties p ON LOWER(TRIM(s.party_name)) = LOWER(TRIM(p.party_name)) " +
+            "WHERE LOWER(TRIM(s.party_name)) = LOWER(TRIM($1));";
 
           db.all(salesQuery, [agentName], function (salesErr, allSalesData) {
             if (salesErr) return res.status(500).json({ success: false, error: salesErr.message });
@@ -158,12 +158,12 @@ const getSummary = function (req, res) {
             const grandNetBalanceToday = grandBalance - effectiveHissa;
 
             // 5. Fetch Ledger Entries
-            const ledgerQuery = 'SELECT party_name, entry_date, debit_amt, credit_amt, description, narration FROM ledger_entries';
+            const ledgerQuery = "SELECT party_name, entry_date, debit_amt, credit_amt, description, narration FROM ledger_entries;";
             db.all(ledgerQuery, [], function (lErr, ledgerRows) {
               const safeLedger = lErr ? [] : (ledgerRows || []);
 
               // 6. Fetch Posted LC Entries
-              const allLcQuery = 'SELECT party_name, from_date, to_date, lc_amount FROM posted_lc_entries';
+              const allLcQuery = "SELECT party_name, from_date, to_date, lc_amount FROM posted_lc_entries;";
               db.all(allLcQuery, [], function (allLcErr, safePostedLcRows) {
                 const safePostedLc = allLcErr ? [] : (safePostedLcRows || []);
 
@@ -180,7 +180,7 @@ const getSummary = function (req, res) {
                   }
                 });
 
-                // 🔥 EXACT F12 & F9 LC MATCH: Calculate Both Direct & 3rd Party Posted LCs
+                // EXACT F12 & F9 LC MATCH: Calculate Both Direct & 3rd Party Posted LCs
                 let todayPostedLcEffect = 0;
 
                 // A. Direct LC Posted in F9 for this agent
@@ -194,7 +194,7 @@ const getSummary = function (req, res) {
                   }
                 });
 
-                // B. 3rd Party Override LC (Rahul ke F7 me Sanjay ki ₹4045 LC add karne ke liye)
+                // B. 3rd Party Override LC
                 allParties.forEach(function (srcParty) {
                   const ovParty = String(srcParty.override_lc_party || srcParty.hissa_party || '').toLowerCase().trim();
                   if (ovParty === currentAgentNorm) {

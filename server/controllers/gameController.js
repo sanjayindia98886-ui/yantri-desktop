@@ -3,16 +3,16 @@ const db = require('../config/database');
 // 1. Ensure Table Exists & Fetch All Games
 const getAllGames = function(req, res) {
   const createTableQuery = 'CREATE TABLE IF NOT EXISTS games (' +
-    'game_id INTEGER PRIMARY KEY AUTOINCREMENT, ' +
-    'game_name TEXT UNIQUE NOT NULL' +
-  ')';
+    'game_id SERIAL PRIMARY KEY, ' +
+    'game_name VARCHAR(100) UNIQUE NOT NULL' +
+  ');';
 
   db.run(createTableQuery, [], function(cErr) {
     if (cErr) {
       return res.status(500).json({ success: false, message: cErr.message });
     }
 
-    const selectQuery = 'SELECT game_id, game_name FROM games ORDER BY game_id ASC';
+    const selectQuery = 'SELECT game_id, game_name FROM games ORDER BY game_id ASC;';
     db.all(selectQuery, [], function(sErr, rows) {
       if (sErr) {
         return res.status(500).json({ success: false, message: sErr.message });
@@ -30,15 +30,16 @@ const addGame = function(req, res) {
     return res.status(400).json({ success: false, message: 'Game name is required' });
   }
 
-  const insertQuery = 'INSERT INTO games (game_name) VALUES (?)';
+  const insertQuery = 'INSERT INTO games (game_name) VALUES ($1) RETURNING game_id;';
   db.run(insertQuery, [gameName], function(err) {
     if (err) {
-      if (err.message.indexOf('UNIQUE') !== -1) {
+      if (err.message && (err.message.indexOf('UNIQUE') !== -1 || err.message.indexOf('unique') !== -1)) {
         return res.status(400).json({ success: false, message: 'यह गेम पहले से मौजूद है!' });
       }
       return res.status(500).json({ success: false, message: err.message });
     }
-    return res.json({ success: true, message: 'Game added successfully', game_id: this.lastID });
+    const insertedId = this && this.lastID ? this.lastID : 1;
+    return res.json({ success: true, message: 'Game added successfully', game_id: insertedId });
   });
 };
 
@@ -50,7 +51,7 @@ const deleteGame = function(req, res) {
     return res.status(400).json({ success: false, message: 'Game ID is required' });
   }
 
-  const deleteQuery = 'DELETE FROM games WHERE game_id = ?';
+  const deleteQuery = 'DELETE FROM games WHERE game_id = $1;';
   db.run(deleteQuery, [gameId], function(err) {
     if (err) {
       return res.status(500).json({ success: false, message: err.message });

@@ -64,7 +64,7 @@ const getBalanceHistory = (req, res) => {
     const withoutHissa = req.query.withoutHissa === 'true';
 
     // 1. Dynamic Active Games Fetching
-    const gameQuery = "SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM sales WHERE TRIM(sale_date) >= TRIM(?) AND TRIM(sale_date) <= TRIM(?) ORDER BY sale_id ASC";
+    const gameQuery = "SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM sales WHERE TRIM(sale_date) >= TRIM($1) AND TRIM(sale_date) <= TRIM($2) ORDER BY sale_id ASC;";
 
     db.all(gameQuery, [fromDate, toDate], function(gErr, gameRows) {
       if (gErr) return res.status(500).json({ success: false, error: gErr.message });
@@ -72,7 +72,7 @@ const getBalanceHistory = (req, res) => {
       let masterGames = (gameRows || []).map(function(g) { return g.game_name; }).filter(Boolean);
 
       if (!masterGames || masterGames.length === 0) {
-        db.all("SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM games ORDER BY game_id ASC", [], function(mgErr, mgRows) {
+        db.all("SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM games ORDER BY game_id ASC;", [], function(mgErr, mgRows) {
           masterGames = (mgRows || []).map(function(g) { return g.game_name; }).filter(Boolean);
           processBalanceHistory(masterGames);
         });
@@ -82,11 +82,11 @@ const getBalanceHistory = (req, res) => {
 
       function processBalanceHistory(activeGames) {
         // 2. Fetch Active Parties
-        db.all("SELECT * FROM parties WHERE LOWER(status) = 'active' ORDER BY party_name ASC", [], function(pErr, parties) {
+        db.all("SELECT * FROM parties WHERE LOWER(status) = 'active' ORDER BY party_name ASC;", [], function(pErr, parties) {
           if (pErr) return res.status(500).json({ success: false, error: pErr.message });
 
           // 3. Fetch Results
-          db.all("SELECT result_date, game_name, winning_number FROM results WHERE TRIM(result_date) >= TRIM(?) AND TRIM(result_date) <= TRIM(?)", [fromDate, toDate], function(rErr, resultsList) {
+          db.all("SELECT result_date, game_name, winning_number FROM results WHERE TRIM(result_date) >= TRIM($1) AND TRIM(result_date) <= TRIM($2);", [fromDate, toDate], function(rErr, resultsList) {
             if (rErr) return res.status(500).json({ success: false, error: rErr.message });
 
             const resultMap = {};
@@ -102,7 +102,7 @@ const getBalanceHistory = (req, res) => {
               "si.number_val, si.amount, si.bet_type " +
               "FROM sales s " +
               "JOIN sale_items si ON s.sale_id = si.sale_id " +
-              "WHERE TRIM(s.sale_date) >= TRIM(?) AND TRIM(s.sale_date) <= TRIM(?)";
+              "WHERE TRIM(s.sale_date) >= TRIM($1) AND TRIM(s.sale_date) <= TRIM($2);";
 
             db.all(salesQuery, [fromDate, toDate], function(sErr, salesData) {
               if (sErr) return res.status(500).json({ success: false, error: sErr.message });

@@ -1,14 +1,44 @@
- var db = require('../config/database');
+[12:53 am, 3/8/2026] P: const { Pool } = require("pg");
+require("dotenv").config();
 
-// 0. Ensure Posted LC Table Exists
-db.run('CREATE TABLE IF NOT EXISTS posted_lc_entries (' +
-  'lc_id INTEGER PRIMARY KEY AUTOINCREMENT, ' +
-  'party_name TEXT, ' +
-  'from_date TEXT, ' +
-  'to_date TEXT, ' +
-  'lc_amount REAL, ' +
-  'created_at DATETIME DEFAULT CURRENT_TIMESTAMP' +
-')');
+// Supabase PostgreSQL Connection Pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+// Test Connection
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error("❌ Supabase PostgreSQL Connection Error:", err.stack);
+  } else {
+    console.log("🚀 Connected to Supabase PostgreSQL Database Successfully!");
+    release();
+  }
+});
+
+// Database Migration & Table Setup Logic
+const initDatabase = async () => {
+  try {
+    // 1. Company Config Table
+    await pool.query(
+      "CREATE TABLE IF NOT EXISTS company_config (" +
+        "id SERIAL PRIMARY KEY, " +
+        "company_id VARCHAR(100) UNIQUE NOT NULL, " +
+        …
+[12:55 am, 3/8/2026] P: var db = require('../config/database');
+
+// 0. Ensure Posted LC Table Exists (PostgreSQL Compatible)
+db.run("CREATE TABLE IF NOT EXISTS posted_lc_entries (" +
+  "lc_id SERIAL PRIMARY KEY, " +
+  "party_name VARCHAR(255), " +
+  "from_date VARCHAR(50), " +
+  "to_date VARCHAR(50), " +
+  "lc_amount NUMERIC, " +
+  "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+");");
 
 // Date Formatter Helper
 function parseDateToNum(dateStr) {
@@ -130,34 +160,34 @@ var getSaleLCData = function(req, res) {
     var toNum = parseDateToNum(toDateRaw);
 
     // 1. Fetch Parties
-    db.all('SELECT rowid AS pno, * FROM parties ORDER BY rowid ASC', [], function(pErr, parties) {
+    db.all("SELECT pno, party_name, lc_perc, patti_perc FROM parties ORDER BY pno ASC", [], function(pErr, parties) {
       if (pErr) return res.status(500).json({ success: false, error: pErr.message });
 
       // 2. Fetch Sales Items
-      var salesQuery = 'SELECT s.party_name, s.sale_date, s.game_name, ' +
-        'COALESCE(s.d_comm, p.d_comm) AS d_comm, ' +
-        'COALESCE(s.d_amt, p.d_amt) AS d_amt, ' +
-        'COALESCE(s.a_comm, p.a_comm) AS a_comm, ' +
-        'COALESCE(s.a_amt, p.a_amt) AS a_amt, ' +
-        'COALESCE(s.patti_perc, p.patti_perc) AS patti_perc, ' +
-        'si.number_val, si.amount, si.bet_type ' +
-        'FROM sales s ' +
-        'JOIN sale_items si ON s.sale_id = si.sale_id ' +
-        'LEFT JOIN parties p ON LOWER(TRIM(s.party_name)) = LOWER(TRIM(p.party_name))';
+      var salesQuery = "SELECT s.party_name, s.sale_date, s.game_name, " +
+        "COALESCE(s.d_comm, p.d_comm) AS d_comm, " +
+        "COALESCE(s.d_amt, p.d_amt) AS d_amt, " +
+        "COALESCE(s.a_comm, p.a_comm) AS a_comm, " +
+        "COALESCE(s.a_amt, p.a_amt) AS a_amt, " +
+        "COALESCE(s.patti_perc, p.patti_perc) AS patti_perc, " +
+        "si.number_val, si.amount, si.bet_type " +
+        "FROM sales s " +
+        "JOIN sale_items si ON s.sale_id = si.sale_id " +
+        "LEFT JOIN parties p ON LOWER(TRIM(s.party_name)) = LOWER(TRIM(p.party_name));";
 
       db.all(salesQuery, [], function(sErr, salesData) {
         if (sErr) return res.status(500).json({ success: false, error: sErr.message });
 
         // 3. Fetch Game Results
-        db.all('SELECT result_date, game_name, winning_number FROM results', [], function(rErr, resultsList) {
+        db.all("SELECT result_date, game_name, winning_number FROM results;", [], function(rErr, resultsList) {
           var safeResults = rErr ? [] : (resultsList || []);
 
           // 4. Fetch Ledger Entries
-          db.all('SELECT entry_id AS acc_id, party_name, entry_date AS date_val, debit_amt, credit_amt, description AS narration FROM ledger_entries', [], function(aErr, accData) {
+          db.all("SELECT entry_id AS acc_id, party_name, entry_date AS date_val, debit_amt, credit_amt, description AS narration FROM ledger_entries;", [], function(aErr, accData) {
             var safeAccData = aErr ? [] : (accData || []);
 
             // 5. Fetch Posted LC Entries
-            db.all('SELECT * FROM posted_lc_entries', [], function(lcErr, postedLcRows) {
+            db.all("SELECT * FROM posted_lc_entries;", [], function(lcErr, postedLcRows) {
               var safePostedLc = lcErr ? [] : (postedLcRows || []);
 
               var rows = [];
@@ -169,7 +199,7 @@ var getSaleLCData = function(req, res) {
                 if (!partyName) return;
 
                 var normName = partyName.toLowerCase().trim();
-                var pno = party.pno || party.rowid || 0;
+                var pno = party.pno || 0;
                 var lcPerc = Number(party.lc_perc !== undefined ? party.lc_perc : (party.lc_patti !== undefined ? party.lc_patti : (party.lc !== undefined ? party.lc : 0)));
                 var defaultPatti = Number(party.patti_perc || 0);
 
@@ -350,7 +380,7 @@ var postLCEntry = function(req, res) {
       return res.json({ success: false, error: 'कोई भी ऐसी पार्टी नहीं है जिसकी LC पोस्ट की जा सके!' });
     }
 
-    var insertQuery = 'INSERT INTO posted_lc_entries (party_name, from_date, to_date, lc_amount) VALUES (?, ?, ?, ?)';
+    var insertQuery = "INSERT INTO posted_lc_entries (party_name, from_date, to_date, lc_amount) VALUES ($1, $2, $3, $4);";
     var postedCount = 0;
     var completed = 0;
 
@@ -381,7 +411,7 @@ var deleteLCEntry = function(req, res) {
       return res.status(400).json({ success: false, error: 'पार्टी का नाम अनिवार्य है!' });
     }
 
-    var deleteQuery = 'DELETE FROM posted_lc_entries WHERE LOWER(TRIM(party_name)) = LOWER(TRIM(?))';
+    var deleteQuery = "DELETE FROM posted_lc_entries WHERE LOWER(TRIM(party_name)) = LOWER(TRIM($1));";
 
     db.run(deleteQuery, [partyName], function(err) {
       if (err) return res.status(500).json({ success: false, error: err.message });

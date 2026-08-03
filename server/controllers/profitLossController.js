@@ -1,4 +1,4 @@
- const db = require('../config/database');
+const db = require('../config/database');
 const { toIsoDate, parseBetItem, calculateGameWinning, calculatePartyOpening } = require('../helpers/balanceCalculator');
 
 // F12: PROFIT & LOSS CONTROLLER (Strict F9 LC Sync, Zero-on-Post Display & Isolated Calculations)
@@ -12,7 +12,7 @@ const getProfitLoss = function (req, res) {
     const isoFromDate = toIsoDate(fromDateRaw);
     const isoToDate = toIsoDate(toDateRaw);
 
-    const partyQuery = 'SELECT * FROM parties ORDER BY pno ASC';
+    const partyQuery = "SELECT * FROM parties ORDER BY pno ASC;";
 
     db.all(partyQuery, [], function (pErr, parties) {
       if (pErr) return res.status(500).json({ success: false, error: pErr.message });
@@ -30,30 +30,30 @@ const getProfitLoss = function (req, res) {
         }
       });
 
-      const resultQuery = 'SELECT game_name, winning_number, result_date FROM results';
+      const resultQuery = "SELECT game_name, winning_number, result_date FROM results;";
 
       db.all(resultQuery, [], function (rErr, resultsList) {
         const safeResults = rErr ? [] : (resultsList || []);
 
-        const ledgerQuery = 'SELECT party_name, entry_date, debit_amt, credit_amt, description, narration FROM ledger_entries';
+        const ledgerQuery = "SELECT party_name, entry_date, debit_amt, credit_amt, description, narration FROM ledger_entries;";
 
         db.all(ledgerQuery, [], function (lErr, ledgerRows) {
           const safeLedger = lErr ? [] : (ledgerRows || []);
 
           // F9 se Posted LC Entries Fetch
-          db.all('SELECT * FROM posted_lc_entries', [], function (lcErr, postedLcRows) {
+          db.all("SELECT * FROM posted_lc_entries;", [], function (lcErr, postedLcRows) {
             const safePostedLc = lcErr ? [] : (postedLcRows || []);
 
-            const salesQuery = 'SELECT s.sale_id, s.party_name, s.game_name, s.sale_date, ' +
-              's.d_comm AS voucher_d_comm, s.a_comm AS voucher_a_comm, ' +
-              'COALESCE(s.d_comm, p.d_comm) AS d_comm, ' +
-              'COALESCE(s.d_amt, p.d_amt) AS d_amt, ' +
-              'COALESCE(s.a_comm, p.a_comm) AS a_comm, ' +
-              'COALESCE(s.a_amt, p.a_amt) AS a_amt, ' +
-              'si.number_val, si.amount, si.bet_type ' +
-              'FROM sales s ' +
-              'JOIN sale_items si ON s.sale_id = si.sale_id ' +
-              'LEFT JOIN parties p ON LOWER(TRIM(s.party_name)) = LOWER(TRIM(p.party_name))';
+            const salesQuery = "SELECT s.sale_id, s.party_name, s.game_name, s.sale_date, " +
+              "s.d_comm AS voucher_d_comm, s.a_comm AS voucher_a_comm, " +
+              "COALESCE(s.d_comm, p.d_comm) AS d_comm, " +
+              "COALESCE(s.d_amt, p.d_amt) AS d_amt, " +
+              "COALESCE(s.a_comm, p.a_comm) AS a_comm, " +
+              "COALESCE(s.a_amt, p.a_amt) AS a_amt, " +
+              "si.number_val, si.amount, si.bet_type " +
+              "FROM sales s " +
+              "JOIN sale_items si ON s.sale_id = si.sale_id " +
+              "LEFT JOIN parties p ON LOWER(TRIM(s.party_name)) = LOWER(TRIM(p.party_name));";
 
             db.all(salesQuery, [], function (sErr, salesRows) {
               const safeSales = sErr ? [] : (salesRows || []);
@@ -278,7 +278,7 @@ const getProfitLoss = function (req, res) {
                   });
                 }
 
-                // DISPLAY LC RULE: Jab tak F9 se Post NAHI hui tab tak -237 dikhegi, Post hone ke baad 0 ho jayegi!
+                // DISPLAY LC RULE: Jab tak F9 se Post NAHI हुई tab tak -237 dikhegi, Post hone ke baad 0 ho jayegi!
                 let displayLc = 0;
                 if (earnedExtraLc > 0 && !isThirdPartyLcPosted) {
                   displayLc = -earnedExtraLc;
@@ -331,7 +331,7 @@ const postTPCommEntry = function (req, res) {
     }
 
     const narration = 'TP Commission Posted (' + toDate + ')';
-    const insertQuery = 'INSERT INTO ledger_entries (party_name, entry_date, debit_amt, credit_amt, description, narration) VALUES (?, ?, 0, ?, ?, ?)';
+    const insertQuery = "INSERT INTO ledger_entries (party_name, entry_date, debit_amt, credit_amt, description, narration) VALUES ($1, $2, 0, $3, $4, $5);";
 
     db.run(insertQuery, [partyName, toDate, absAmount, narration, narration], function (err) {
       if (err) return res.status(500).json({ success: false, error: err.message });
@@ -350,7 +350,7 @@ const deleteTPCommEntry = function (req, res) {
   try {
     const partyName = String(req.body.partyName || '').trim();
 
-    const deleteQuery = "DELETE FROM ledger_entries WHERE LOWER(TRIM(party_name)) = LOWER(TRIM(?)) AND (description LIKE 'TP Commission Posted%' OR narration LIKE 'TP Commission Posted%')";
+    const deleteQuery = "DELETE FROM ledger_entries WHERE LOWER(TRIM(party_name)) = LOWER(TRIM($1)) AND (description LIKE 'TP Commission Posted%' OR narration LIKE 'TP Commission Posted%');";
 
     db.run(deleteQuery, [partyName], function (err) {
       if (err) return res.status(500).json({ success: false, error: err.message });
@@ -365,4 +365,4 @@ module.exports = {
   getProfitLoss: getProfitLoss,
   postTPCommEntry: postTPCommEntry,
   deleteTPCommEntry: deleteTPCommEntry
-}
+};

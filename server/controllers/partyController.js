@@ -1,16 +1,16 @@
 const db = require('../config/database');
 
-// Database Schema Safe Guard (Ensure columns exist without dropping data)
-db.serialize(function() {
-  db.run("ALTER TABLE parties ADD COLUMN override_comm_perc REAL DEFAULT 0", function() {});
-  db.run("ALTER TABLE parties ADD COLUMN override_comm_party TEXT DEFAULT ''", function() {});
-  db.run("ALTER TABLE parties ADD COLUMN override_lc_perc REAL DEFAULT 0", function() {});
-  db.run("ALTER TABLE parties ADD COLUMN override_lc_party TEXT DEFAULT ''", function() {});
-});
+// Database Schema Safe Guard (Ensure columns exist without dropping data for PostgreSQL)
+if (db.query) {
+  db.query("ALTER TABLE parties ADD COLUMN IF NOT EXISTS override_comm_perc NUMERIC DEFAULT 0;", [], function() {});
+  db.query("ALTER TABLE parties ADD COLUMN IF NOT EXISTS override_comm_party VARCHAR(255) DEFAULT '';", [], function() {});
+  db.query("ALTER TABLE parties ADD COLUMN IF NOT EXISTS override_lc_perc NUMERIC DEFAULT 0;", [], function() {});
+  db.query("ALTER TABLE parties ADD COLUMN IF NOT EXISTS override_lc_party VARCHAR(255) DEFAULT '';", [], function() {});
+}
 
 // 1. FETCH ALL PARTIES (For both Admin & User - Read Only Access)
 const getAllParties = function(req, res) {
-  const query = "SELECT * FROM parties ORDER BY pno ASC";
+  const query = "SELECT * FROM parties ORDER BY pno ASC;";
   db.all(query, [], function(err, rows) {
     if (err) {
       return res.status(500).json({ success: false, error: err.message });
@@ -44,7 +44,7 @@ const createParty = function(req, res) {
 
   const query = "INSERT INTO parties " +
     "(party_name, city, phone, d_comm, d_amt, a_comm, a_amt, patti_perc, lc_perc, hissa_party, hissa_patti_perc, override_comm_perc, override_comm_party, override_lc_perc, override_lc_party, status) " +
-    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')";
+    "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'Active') RETURNING pno;";
 
   const params = [
     String(party_name).trim(),
@@ -66,12 +66,13 @@ const createParty = function(req, res) {
 
   db.run(query, params, function(err) {
     if (err) {
-      if (err.message && err.message.indexOf('UNIQUE') !== -1) {
+      if (err.message && (err.message.indexOf('UNIQUE') !== -1 || err.message.indexOf('unique') !== -1)) {
         return res.status(400).json({ success: false, error: 'Party Name already exists!' });
       }
       return res.status(500).json({ success: false, error: err.message });
     }
-    return res.json({ success: true, pno: this.lastID, message: 'Party created successfully' });
+    const insertedPno = this && this.lastID ? this.lastID : 1;
+    return res.json({ success: true, pno: insertedPno, message: 'Party created successfully' });
   });
 };
 
@@ -101,12 +102,12 @@ const updateParty = function(req, res) {
   }
 
   const query = "UPDATE parties SET " +
-    "party_name = ?, city = ?, phone = ?, d_comm = ?, d_amt = ?, " +
-    "a_comm = ?, a_amt = ?, patti_perc = ?, lc_perc = ?, " +
-    "hissa_party = ?, hissa_patti_perc = ?, status = ?, " +
-    "override_comm_perc = ?, override_comm_party = ?, " +
-    "override_lc_perc = ?, override_lc_party = ? " +
-    "WHERE pno = ?";
+    "party_name = $1, city = $2, phone = $3, d_comm = $4, d_amt = $5, " +
+    "a_comm = $6, a_amt = $7, patti_perc = $8, lc_perc = $9, " +
+    "hissa_party = $10, hissa_patti_perc = $11, status = $12, " +
+    "override_comm_perc = $13, override_comm_party = $14, " +
+    "override_lc_perc = $15, override_lc_party = $16 " +
+    "WHERE pno = $17;";
 
   const params = [
     String(party_name || '').trim(),
@@ -144,7 +145,7 @@ const deleteParty = function(req, res) {
     return res.status(400).json({ success: false, error: 'Party Number (pno) is required' });
   }
 
-  const query = "DELETE FROM parties WHERE pno = ?";
+  const query = "DELETE FROM parties WHERE pno = $1;";
   db.run(query, [pno], function(err) {
     if (err) {
       return res.status(500).json({ success: false, error: err.message });

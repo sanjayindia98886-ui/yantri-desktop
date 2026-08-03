@@ -197,7 +197,7 @@ function calculatePartyOpening(party, safeSales, safeResults, safeLedger, partyL
     }
   });
 
-  // 4. 🔥 FIX FOR RAHUL: Dynamic Past Posted LC Entries (Direct + 3rd Party Override LC)
+  // 4. FIX FOR RAHUL: Dynamic Past Posted LC Entries (Direct + 3rd Party Override LC)
   let pastPostedLcAmount = 0;
   
   // A. Direct Posted LC

@@ -13,7 +13,7 @@ const getBalanceHistory = function (req, res) {
     const toDate = String(req.query.toDate || fromDate).trim();
     const withoutHissa = req.query.withoutHissa === 'true';
 
-    const gameQuery = "SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM sales WHERE TRIM(sale_date) >= TRIM(?) AND TRIM(sale_date) <= TRIM(?) ORDER BY sale_id ASC";
+    const gameQuery = "SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM sales WHERE TRIM(sale_date) >= TRIM($1) AND TRIM(sale_date) <= TRIM($2) ORDER BY sale_id ASC;";
 
     db.all(gameQuery, [fromDate, toDate], function (gErr, gameRows) {
       if (gErr) return res.status(500).json({ success: false, error: gErr.message });
@@ -21,7 +21,7 @@ const getBalanceHistory = function (req, res) {
       let masterGames = (gameRows || []).map(function (g) { return g.game_name; }).filter(Boolean);
 
       if (!masterGames || masterGames.length === 0) {
-        db.all("SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM games ORDER BY game_id ASC", [], function (mgErr, mgRows) {
+        db.all("SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM games ORDER BY game_id ASC;", [], function (mgErr, mgRows) {
           masterGames = (mgRows || []).map(function (g) { return g.game_name; }).filter(Boolean);
           processBalanceHistory(masterGames);
         });
@@ -30,10 +30,10 @@ const getBalanceHistory = function (req, res) {
       }
 
       function processBalanceHistory(activeGames) {
-        db.all("SELECT * FROM parties WHERE LOWER(status) = 'active' ORDER BY party_name ASC", [], function (pErr, parties) {
+        db.all("SELECT * FROM parties WHERE LOWER(status) = 'active' ORDER BY party_name ASC;", [], function (pErr, parties) {
           if (pErr) return res.status(500).json({ success: false, error: pErr.message });
 
-          db.all("SELECT result_date, game_name, winning_number FROM results WHERE TRIM(result_date) >= TRIM(?) AND TRIM(result_date) <= TRIM(?)", [fromDate, toDate], function (rErr, resultsList) {
+          db.all("SELECT result_date, game_name, winning_number FROM results WHERE TRIM(result_date) >= TRIM($1) AND TRIM(result_date) <= TRIM($2);", [fromDate, toDate], function (rErr, resultsList) {
             if (rErr) return res.status(500).json({ success: false, error: rErr.message });
 
             const resultMap = {};
@@ -48,7 +48,7 @@ const getBalanceHistory = function (req, res) {
               "si.number_val, si.amount, si.bet_type " +
               "FROM sales s " +
               "JOIN sale_items si ON s.sale_id = si.sale_id " +
-              "WHERE TRIM(s.sale_date) >= TRIM(?) AND TRIM(s.sale_date) <= TRIM(?)";
+              "WHERE TRIM(s.sale_date) >= TRIM($1) AND TRIM(s.sale_date) <= TRIM($2);";
 
             db.all(salesQuery, [fromDate, toDate], function (sErr, salesData) {
               if (sErr) return res.status(500).json({ success: false, error: sErr.message });
@@ -218,7 +218,7 @@ const getBalanceSheet = function (req, res) {
     const isoFromDate = toIsoDate(fromDateRaw);
     const isoToDate = toIsoDate(toDateRaw);
 
-    const partyQuery = 'SELECT * FROM parties ORDER BY pno ASC';
+    const partyQuery = "SELECT * FROM parties ORDER BY pno ASC;";
 
     db.all(partyQuery, [], function (pErr, parties) {
       if (pErr) return res.status(500).json({ success: false, error: pErr.message });
@@ -226,30 +226,30 @@ const getBalanceSheet = function (req, res) {
       const partyList = parties || [];
       if (partyList.length === 0) return res.json({ success: true, data: [] });
 
-      const resultQuery = 'SELECT game_name, winning_number, result_date FROM results';
+      const resultQuery = "SELECT game_name, winning_number, result_date FROM results;";
 
       db.all(resultQuery, [], function (rErr, resultsList) {
         const safeResults = rErr ? [] : (resultsList || []);
 
-        const ledgerQuery = 'SELECT party_name, entry_date, debit_amt, credit_amt, description, narration FROM ledger_entries';
+        const ledgerQuery = "SELECT party_name, entry_date, debit_amt, credit_amt, description, narration FROM ledger_entries;";
 
         db.all(ledgerQuery, [], function (lErr, ledgerRows) {
           const safeLedger = lErr ? [] : (ledgerRows || []);
 
-          const salesQuery = 'SELECT s.sale_id, s.party_name, s.game_name, s.sale_date, ' +
-            'COALESCE(s.d_comm, p.d_comm) AS d_comm, ' +
-            'COALESCE(s.d_amt, p.d_amt) AS d_amt, ' +
-            'COALESCE(s.a_comm, p.a_comm) AS a_comm, ' +
-            'COALESCE(s.a_amt, p.a_amt) AS a_amt, ' +
-            'si.number_val, si.amount, si.bet_type ' +
-            'FROM sales s ' +
-            'JOIN sale_items si ON s.sale_id = si.sale_id ' +
-            'LEFT JOIN parties p ON LOWER(TRIM(s.party_name)) = LOWER(TRIM(p.party_name))';
+          const salesQuery = "SELECT s.sale_id, s.party_name, s.game_name, s.sale_date, " +
+            "COALESCE(s.d_comm, p.d_comm) AS d_comm, " +
+            "COALESCE(s.d_amt, p.d_amt) AS d_amt, " +
+            "COALESCE(s.a_comm, p.a_comm) AS a_comm, " +
+            "COALESCE(s.a_amt, p.a_amt) AS a_amt, " +
+            "si.number_val, si.amount, si.bet_type " +
+            "FROM sales s " +
+            "JOIN sale_items si ON s.sale_id = si.sale_id " +
+            "LEFT JOIN parties p ON LOWER(TRIM(s.party_name)) = LOWER(TRIM(p.party_name));";
 
           db.all(salesQuery, [], function (sErr, salesRows) {
             const safeSales = sErr ? [] : (salesRows || []);
 
-            db.all('SELECT * FROM posted_lc_entries', [], function (lcErr, postedLcRows) {
+            db.all("SELECT * FROM posted_lc_entries;", [], function (lcErr, postedLcRows) {
               const safePostedLc = lcErr ? [] : (postedLcRows || []);
 
               const dynamicGames = ['GB', 'DN', 'FB', 'DS', 'ND', 'PATNA'];
@@ -358,7 +358,7 @@ const getBalanceSheet = function (req, res) {
                   }
                 });
 
-                // 🔥 F11 FIX: Rahul (3rd Party) ke Net Balance me Sanjay ki Posted LC Effect Sync karna (Strict F12 Match)
+                // F11 FIX: Rahul (3rd Party) ke Net Balance me Sanjay ki Posted LC Effect Sync karna (Strict F12 Match)
                 let thirdPartyPostedLcEffect = 0;
                 partyList.forEach(function (srcParty) {
                   const srcOvLcParty = String(srcParty.override_lc_party || '').toLowerCase().trim();
