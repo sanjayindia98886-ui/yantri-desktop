@@ -1,28 +1,4 @@
-[1:01 am, 3/8/2026] P: const db = require('../config/database');
-
-// Date conversion helper (DD/MM/YYYY -> YYYY-MM-DD for accurate date range filtering)
-function toIsoDate(dateStr) {
-  if (!dateStr) return '';
-  const str = String(dateStr).trim();
-  if (str.indexOf('/') !== -1) {
-    const parts = str.split('/');
-    if (parts.length === 3) {
-      const dd = parts[0].padStart(2, '0');
-      const mm = parts[1].padStart(2, '0');
-      const yyyy = parts[2];
-      return yyyy + '-' + mm + '-' + dd;
-    }
-  }
-  return str;
-}
-
-// 1. Fetch History Entries for F10 Grid
-const getAccountHistory = function(req, res) {
-  try {
-    const party = String(req.query.party || 'All').trim();
-    const type = String(req.query.type || 'All').trim();
-    const fromDateRaw = String(req.query.fromDate…
-[1:02 am, 3/8/2026] P: const db = require('../config/database');
+ const db = require('../config/database');
 
 // Date conversion helper (DD/MM/YYYY -> YYYY-MM-DD for accurate date range filtering)
 function toIsoDate(dateStr) {
