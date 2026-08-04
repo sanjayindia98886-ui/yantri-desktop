@@ -109,23 +109,26 @@ export default function PartyF1({ userRole = 'Admin' }) {
       ? axios.put('https://yantri-desktop.onrender.com/api/parties', formData)
       : axios.post('https://yantri-desktop.onrender.com/api/parties', formData);
 
-    apiCall
-      .then(function(res) {
-        if (res.data && (res.data.success || res.data.pno)) {
-          alert(isEdit ? 'Party Updated Successfully!' : 'Party Saved Successfully!');
-          handleReset();
-          fetchParties();
-        } else {
-          alert('Failed to save party: ' + (res.data.error || 'Unknown error'));
-          restoreFocus();
-        }
-      })
-      .catch(function(err) {
-        console.error('Save error:', err);
-        alert('Server Connection Error! Make sure node server is running.');
+ apiCall
+  .then(function(res) {
+    if (res.data && (res.data.success || res.data.pno)) {
+      // 1. पहले फॉर्म रिसेट और डेटा फेच करें
+      handleReset();
+      fetchParties();
+
+      // 2. अलर्ट को 100ms के डिले से दिखाएं ताकि React State तुरंत अपडेट हो जाए
+      setTimeout(function() {
+        alert(isEdit ? 'Party Updated Successfully!' : 'Party Saved Successfully!');
+        
+        // 3. अलर्ट OK दबाने के तुरंत बाद कर्सर फ़ोकस करें
         restoreFocus();
-      });
-  };
+      }, 100);
+
+    } else {
+      alert('Failed to save party: ' + (res.data.error || 'Unknown error'));
+      restoreFocus();
+    }
+  })
 
   const handleDelete = function(pno) {
     if (!isAdmin) {
