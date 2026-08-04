@@ -27,14 +27,17 @@ export default function PartyF1({ userRole = 'Admin' }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Active');
   const [selectedPno, setSelectedPno] = useState(null);
+  
+  // नया स्टेट: अलर्ट की जगह बिना फोकस तोड़े स्क्रीन पर मैसेज दिखाने के लिए
+  const [notification, setNotification] = useState('');
 
   const currentUserId = 'User 0';
   
   const normalizedRole = String(userRole || '').toLowerCase();
   const isAdmin = normalizedRole === 'admin' || normalizedRole === 'super_admin' || userRole === 'Admin';
 
-  // Helper to restore focus back to Party Name input (दिक्कत को दूर करने के लिए टाइमर और फोकस फिक्स)
-    const restoreFocus = function() {
+  // फोकस को वापस 'Party Name' इनपुट पर लाने और इलेक्ट्रॉन विंडो को एक्टिव करने का पक्का तरीका
+  const restoreFocus = function() {
     setTimeout(function() {
       if (typeof window !== 'undefined') {
         window.focus();
@@ -44,7 +47,7 @@ export default function PartyF1({ userRole = 'Admin' }) {
         el.focus();
         el.click();
       }
-    }, 100);
+    }, 50);
   };
 
   const fetchParties = function() {
@@ -96,13 +99,13 @@ export default function PartyF1({ userRole = 'Admin' }) {
     e.preventDefault();
 
     if (!isAdmin) {
-      alert('Only Admin can add or edit parties!');
+      setNotification('Only Admin can add or edit parties!');
       restoreFocus();
       return;
     }
 
     if (!formData.party_name) {
-      alert('Please enter Party Name!');
+      setNotification('Please enter Party Name!');
       restoreFocus();
       return;
     }
@@ -115,24 +118,31 @@ export default function PartyF1({ userRole = 'Admin' }) {
     apiCall
       .then(function(res) {
         if (res.data && (res.data.success || res.data.pno)) {
-          alert(isEdit ? 'Party Updated Successfully!' : 'Party Saved Successfully!');
+          // अलर्ट की जगह इन-लाइन मैसेज ताकि फोकस न टूटे
+          setNotification(isEdit ? 'Party Updated Successfully!' : 'Party Saved Successfully!');
+          
+          // 3 सेकंड बाद मैसेज अपने आप हट जाएगा
+          setTimeout(function() {
+            setNotification('');
+          }, 3000);
+
           handleReset();
           fetchParties();
         } else {
-          alert('Failed to save party: ' + (res.data.error || 'Unknown error'));
+          setNotification('Failed to save party: ' + (res.data.error || 'Unknown error'));
           restoreFocus();
         }
       })
       .catch(function(err) {
         console.error('Save error:', err);
-        alert('Server Connection Error! Make sure node server is running.');
+        setNotification('Server Connection Error! Make sure node server is running.');
         restoreFocus();
       });
   };
 
   const handleDelete = function(pno) {
     if (!isAdmin) {
-      alert('Only Admin can delete parties!');
+      setNotification('Only Admin can delete parties!');
       restoreFocus();
       return;
     }
@@ -141,17 +151,20 @@ export default function PartyF1({ userRole = 'Admin' }) {
       axios.delete('https://yantri-desktop.onrender.com/api/parties/' + pno)
         .then(function(res) {
           if (res.data && res.data.success) {
-            alert('Party Deleted Successfully!');
+            setNotification('Party Deleted Successfully!');
+            setTimeout(function() {
+              setNotification('');
+            }, 3000);
             handleReset();
             fetchParties();
           } else {
-            alert('Failed to delete party');
+            setNotification('Failed to delete party');
             restoreFocus();
           }
         })
         .catch(function(err) {
           console.error('Delete error:', err);
-          alert('Server Error during deletion!');
+          setNotification('Server Error during deletion!');
           restoreFocus();
         });
     } else {
@@ -204,6 +217,13 @@ export default function PartyF1({ userRole = 'Admin' }) {
             </strong>
             <span style={{ width: '30px' }}></span>
           </div>
+
+          {/* नोटिफिकेशन बैनर: बिना फोकस तोड़े सफलता या गलती दिखाने के लिए */}
+          {notification && (
+            <div style={{ background: '#d4edda', color: '#155724', padding: '4px 6px', marginBottom: '4px', border: '1px solid #c3e6cb', fontSize: '10px', fontWeight: 'bold', textAlign: 'center' }}>
+              {notification}
+            </div>
+          )}
 
           <form onSubmit={handleSave} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
@@ -418,6 +438,7 @@ export default function PartyF1({ userRole = 'Admin' }) {
                       </td>
                       <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{p.pno || (idx + 1)}</td>
                       <td style={{ fontFamily: 'Tahoma, sans-serif', fontWeight: 'bold' }}>{p.party_name}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{p.lc_perc || 0}</td>
                       <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{p.lc_perc || 0}</td>
                       <td style={{ fontFamily: 'Tahoma, sans-serif', fontWeight: 'bold' }}>{p.city || ''}</td>
                       <td style={{ fontWeight: 'bold' }}>{p.phone || ''}</td>
