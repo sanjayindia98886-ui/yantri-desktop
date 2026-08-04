@@ -35,11 +35,14 @@ export default function PartyF1({ userRole = 'Admin' }) {
 
   // Helper to restore focus back to Party Name input
   const restoreFocus = function() {
-    window.focus();
-    setTimeout(function() {
-      document.getElementById('f1PartyNameInput')?.focus();
-    }, 50);
-  };
+  setTimeout(function() {
+    const inputEl = document.getElementById('f1PartyNameInput');
+    if (inputEl) {
+      inputEl.focus();
+      inputEl.select();
+    }
+  }, 100);
+};
 
   const fetchParties = function() {
     axios.get('https://yantri-desktop.onrender.com/api/parties')
