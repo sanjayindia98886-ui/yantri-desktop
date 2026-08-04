@@ -34,14 +34,17 @@ export default function PartyF1({ userRole = 'Admin' }) {
   const isAdmin = normalizedRole === 'admin' || normalizedRole === 'super_admin' || userRole === 'Admin';
 
   // Helper to restore focus back to Party Name input (दिक्कत को दूर करने के लिए टाइमर और फोकस फिक्स)
-  const restoreFocus = function() {
+    const restoreFocus = function() {
     setTimeout(function() {
-      const inputElement = document.getElementById('f1PartyNameInput');
-      if (inputElement) {
-        inputElement.focus();
-        inputElement.select();
+      if (typeof window !== 'undefined') {
+        window.focus();
       }
-    }, 200);
+      const el = document.getElementById('f1PartyNameInput');
+      if (el) {
+        el.focus();
+        el.click();
+      }
+    }, 100);
   };
 
   const fetchParties = function() {
