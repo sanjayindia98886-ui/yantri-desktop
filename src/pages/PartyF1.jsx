@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 export default function PartyF1({ userRole = 'Admin' }) {
@@ -28,17 +28,25 @@ export default function PartyF1({ userRole = 'Admin' }) {
   const [statusFilter, setStatusFilter] = useState('Active');
   const [selectedPno, setSelectedPno] = useState(null);
 
+  const inputRef = useRef(null);
+
   const currentUserId = 'User 0';
   
   const normalizedRole = String(userRole || '').toLowerCase();
   const isAdmin = normalizedRole === 'admin' || normalizedRole === 'super_admin' || userRole === 'Admin';
 
-  // Helper to restore focus back to Party Name input
+  // Helper to restore focus back to Party Name input (Updated Fix for Alert/Focus Loss)
   const restoreFocus = function() {
-    window.focus();
-    setTimeout(function() {
-      document.getElementById('f1PartyNameInput')?.focus();
-    }, 50);
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        } else {
+          const el = document.getElementById('f1PartyNameInput');
+          if (el) el.focus();
+        }
+      });
+    });
   };
 
   const fetchParties = function() {
@@ -53,7 +61,6 @@ export default function PartyF1({ userRole = 'Admin' }) {
       });
   };
 
-  
   useEffect(function() {
     fetchParties();
   }, []);
@@ -207,6 +214,7 @@ export default function PartyF1({ userRole = 'Admin' }) {
                 <label style={{ width: '80px', fontWeight: 'bold' }}>Party Name</label>
                 <input 
                   id="f1PartyNameInput"
+                  ref={inputRef}
                   type="text" 
                   name="party_name" 
                   value={formData.party_name} 
