@@ -40,9 +40,14 @@ export default function VoucherYantriF3() {
 
   // Helper to restore focus back to first grid input box
   const restoreFocus = function() {
-    window.focus();
     setTimeout(function() {
-      document.getElementById('yantri-box-1')?.focus();
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      const el = document.getElementById('yantri-box-1');
+      if (el) {
+        el.focus();
+      }
     }, 50);
   };
 

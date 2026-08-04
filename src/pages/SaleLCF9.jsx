@@ -24,7 +24,15 @@ export default function SaleLCF9() {
   const [selectedRowIndex, setSelectedRowIndex] = useState(0);
 
   const [rows, setRows] = useState([]);
+  const [notification, setNotification] = useState('');
   const tableWrapperRef = useRef(null);
+
+  const showNotify = function(msg) {
+    setNotification(msg);
+    setTimeout(function() {
+      setNotification('');
+    }, 3000);
+  };
 
   const handleFromDateChange = function(e) {
     const val = e.target.value;
@@ -94,9 +102,14 @@ export default function SaleLCF9() {
 
   // Helper function for restoring focus
   const restoreFocus = function() {
-    window.focus();
     setTimeout(function() {
-      document.getElementById('f9FilterInput')?.focus();
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      const el = document.getElementById('f9FilterInput');
+      if (el) {
+        el.focus();
+      }
     }, 50);
   };
 
@@ -114,22 +127,21 @@ export default function SaleLCF9() {
         setSelectedRowIndex(0);
         restoreFocus();
       } else {
-        alert('Error: ' + (data.error || 'Unable to fetch LC data'));
+        showNotify('Error: ' + (data.error || 'Unable to fetch LC data'));
         restoreFocus();
       }
     } catch (error) {
       console.error('Error fetching Sale LC data:', error);
-      alert('Server Connection Error!');
+      showNotify('Server Connection Error!');
       restoreFocus();
     } finally {
       setLoading(false);
     }
   };
 
-  // Post LC Function (F10 se alag, Direct Open/Net Balance Sync)
+  // Post LC Function
   const handlePostLC = async function() {
     if (!isLoaded || filteredRows.length === 0) return;
-    if (!window.confirm('क्या आप F9 की इस LC बोनस राशि को सीधे ओपनिंग / नेट बैलेंस में जोड़ना चाहते हैं?')) return;
 
     try {
       const response = await fetch('https://yantri-desktop.onrender.com/api/sale-lc/post-lc', {
@@ -143,29 +155,27 @@ export default function SaleLCF9() {
       });
       const data = await response.json();
       if (data.success) {
-        alert(data.message || 'LC सफलतापूर्वक जमा होकर नेट बैलेंस में जुड़ गई है!');
+        showNotify(data.message || 'LC सफलतापूर्वक जमा होकर नेट बैलेंस में जुड़ गई है!');
         fetchLCData();
       } else {
-        alert('Error: ' + (data.error || 'Failed to post LC'));
+        showNotify('Error: ' + (data.error || 'Failed to post LC'));
         restoreFocus();
       }
     } catch (error) {
       console.error('Error posting LC:', error);
-      alert('Server Connection Error!');
+      showNotify('Server Connection Error!');
       restoreFocus();
     }
   };
 
-  // Delete LC Function (Specific Party Rollback)
+  // Delete LC Function
   const handleDeleteLC = async function() {
     if (!selectedParty) return;
     if (!selectedParty.isPosted) {
-      alert('चुनी गई पार्टी की LC अभी पोस्ट नहीं हुई है!');
+      showNotify('चुनी गई पार्टी की LC अभी पोस्ट नहीं हुई है!');
       restoreFocus();
       return;
     }
-
-    if (!window.confirm('क्या आप ' + selectedParty.name + ' की पोस्टेड LC को हटाना (Delete) चाहते हैं?')) return;
 
     try {
       const response = await fetch('https://yantri-desktop.onrender.com/api/sale-lc/delete-lc', {
@@ -179,15 +189,15 @@ export default function SaleLCF9() {
       });
       const data = await response.json();
       if (data.success) {
-        alert(data.message || 'LC पोस्टिंग सफलतापूर्वक डिलीट कर दी गई है!');
+        showNotify(data.message || 'LC पोस्टिंग सफलतापूर्वक डिलीट कर दी गई है!');
         fetchLCData();
       } else {
-        alert('Error: ' + (data.error || 'Failed to delete LC entry'));
+        showNotify('Error: ' + (data.error || 'Failed to delete LC entry'));
         restoreFocus();
       }
     } catch (error) {
       console.error('Error deleting LC:', error);
-      alert('Server Connection Error!');
+      showNotify('Server Connection Error!');
       restoreFocus();
     }
   };
@@ -196,7 +206,7 @@ export default function SaleLCF9() {
     window.print();
   };
 
-  // CSS Styling Updated for Layout & Typography Fixes
+  // CSS Styling
   const cssStyles = 
     '.f9-container { padding: 4px; background-color: #d0d5dd; height: 96vh; font-size: 11px; font-family: "Segoe UI", Tahoma, Arial, sans-serif; display: flex; flex-direction: column; box-sizing: border-box; outline: none; overflow: hidden; }\n' +
     '.filter-bar { background: #e0e5eb; padding: 6px 8px; border: 1px solid #999; margin-bottom: 4px; font-size: 11px; display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }\n' +
@@ -235,6 +245,13 @@ export default function SaleLCF9() {
   return (
     <div className="f9-container" tabIndex={0}>
       <style>{cssStyles}</style>
+
+      {/* Top Notification Banner */}
+      {notification && (
+        <div style={{ background: '#d4edda', color: '#155724', padding: '4px 8px', marginBottom: '4px', border: '1px solid #c3e6cb', fontSize: '11px', fontWeight: 'bold', textAlign: 'center' }}>
+          {notification}
+        </div>
+      )}
 
       {/* Top Filter Bar */}
       <div className="filter-bar">

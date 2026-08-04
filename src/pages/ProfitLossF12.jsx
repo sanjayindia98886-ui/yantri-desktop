@@ -23,17 +23,30 @@ export default function ProfitLossF12() {
   const [rows, setRows] = useState([]);
   const [thirdPartyOptions, setThirdPartyOptions] = useState([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
+  const [notification, setNotification] = useState('');
 
   const [pnlSummary, setPnlSummary] = useState({
     sale: 0, comm: 0, win: 0, patti: 0, tpPatti: 0, tpComm: 0,
     adjustment: 0, lc: 0, netPL: 0, opening: 0, payment: 0, netBalance: 0
   });
 
+  const showNotify = function(msg) {
+    setNotification(msg);
+    setTimeout(function() {
+      setNotification('');
+    }, 3000);
+  };
+
   // Helper to restore focus back to Filter Input
   const restoreFocus = function() {
-    window.focus();
     setTimeout(function() {
-      document.getElementById('f12FilterInput')?.focus();
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      const el = document.getElementById('f12FilterInput');
+      if (el) {
+        el.focus();
+      }
     }, 50);
   };
 
@@ -50,7 +63,6 @@ export default function ProfitLossF12() {
   };
 
   const fetchProfitLoss = function() {
-    // ✅ Exact URL matching backend route
     const url = 'https://yantri-desktop.onrender.com/api/profit-loss?fromDate=' + encodeURIComponent(fromDate) +
                 '&toDate=' + encodeURIComponent(toDate) +
                 '&partyType=' + encodeURIComponent(partyTypeFilter) +
@@ -65,13 +77,13 @@ export default function ProfitLossF12() {
             setThirdPartyOptions(data.thirdParties);
           }
         } else {
-          alert('Error: ' + (data.error || 'Failed to fetch Profit & Loss data'));
+          showNotify('Error: ' + (data.error || 'Failed to fetch Profit & Loss data'));
         }
         restoreFocus();
       })
       .catch(function(err) {
         console.error('Fetch Profit & Loss Error:', err);
-        alert('Server Connection Error!');
+        showNotify('Server Connection Error!');
         restoreFocus();
       });
   };
@@ -129,23 +141,17 @@ export default function ProfitLossF12() {
   // 2. Post TP Commission Function
   const handlePostTPComm = function() {
     if (!selectedParty) {
-      alert('Please select a party first!');
+      showNotify('Please select a party first!');
       restoreFocus();
       return;
     }
     const currentTpComm = Number(selectedParty.tpComm || 0);
     if (Math.abs(currentTpComm) === 0) {
-      alert('No TP Commission available to post for ' + (selectedParty.party_name || 'selected party'));
+      showNotify('No TP Commission available to post for ' + (selectedParty.party_name || 'selected party'));
       restoreFocus();
       return;
     }
 
-    if (!window.confirm('Are you sure you want to Post TP Commission (' + currentTpComm + ') for ' + selectedParty.party_name + '?')) {
-      restoreFocus();
-      return;
-    }
-
-    // ✅ FIXED ROUTE: Corrected from /api/reports/profit-loss/... to /api/profit-loss/post-tp-comm
     fetch('https://yantri-desktop.onrender.com/api/profit-loss/post-tp-comm', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -158,16 +164,16 @@ export default function ProfitLossF12() {
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (data.success) {
-          alert(data.message || 'TP Commission Posted Successfully!');
+          showNotify(data.message || 'TP Commission Posted Successfully!');
           fetchProfitLoss();
         } else {
-          alert('Error: ' + (data.error || 'Failed to post TP Commission'));
+          showNotify('Error: ' + (data.error || 'Failed to post TP Commission'));
           restoreFocus();
         }
       })
       .catch(function(err) {
         console.error('Post TP Comm Error:', err);
-        alert('Server Connection Error!');
+        showNotify('Server Connection Error!');
         restoreFocus();
       });
   };
@@ -175,23 +181,17 @@ export default function ProfitLossF12() {
   // 3. Delete / Unpost TP Commission Function
   const handleDeleteTPComm = function() {
     if (!selectedParty) {
-      alert('Please select a party first!');
+      showNotify('Please select a party first!');
       restoreFocus();
       return;
     }
 
     if (!selectedParty.isTpPosted) {
-      alert('Selected party TP Commission is not posted yet!');
+      showNotify('Selected party TP Commission is not posted yet!');
       restoreFocus();
       return;
     }
 
-    if (!window.confirm('Are you sure you want to Delete/Unpost TP Commission entry for ' + selectedParty.party_name + '?')) {
-      restoreFocus();
-      return;
-    }
-
-    // ✅ FIXED ROUTE: Corrected from /api/reports/profit-loss/... to /api/profit-loss/delete-tp-comm
     fetch('https://yantri-desktop.onrender.com/api/profit-loss/delete-tp-comm', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -203,16 +203,16 @@ export default function ProfitLossF12() {
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (data.success) {
-          alert(data.message || 'Posted TP Commission Deleted Successfully!');
+          showNotify(data.message || 'Posted TP Commission Deleted Successfully!');
           fetchProfitLoss();
         } else {
-          alert('Error: ' + (data.error || 'Failed to delete TP Commission entry'));
+          showNotify('Error: ' + (data.error || 'Failed to delete TP Commission entry'));
           restoreFocus();
         }
       })
       .catch(function(err) {
         console.error('Delete TP Comm Error:', err);
-        alert('Server Connection Error!');
+        showNotify('Server Connection Error!');
         restoreFocus();
       });
   };
@@ -236,6 +236,13 @@ export default function ProfitLossF12() {
   return (
     <div style={{ padding: '8px', background: '#dcdcdc', minHeight: '92vh', fontSize: '11px', display: 'flex', flexDirection: 'column', fontFamily: '"Segoe UI", Tahoma, Arial, sans-serif', boxSizing: 'border-box' }}>
       
+      {/* Top Notification Banner */}
+      {notification && (
+        <div style={{ background: '#d4edda', color: '#155724', padding: '4px 8px', marginBottom: '4px', border: '1px solid #c3e6cb', fontSize: '11px', fontWeight: 'bold', textAlign: 'center' }}>
+          {notification}
+        </div>
+      )}
+
       {/* Top Filter Controls */}
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: '#ece9d8', padding: '6px 10px', border: '1px solid #7a96df', marginBottom: '8px', flexWrap: 'wrap', fontWeight: 'bold' }}>
         

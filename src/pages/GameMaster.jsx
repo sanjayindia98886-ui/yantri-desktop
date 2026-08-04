@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from 'react';
 
-
 export default function GameMaster() {
   const [games, setGames] = useState([]);
   const [newGameName, setNewGameName] = useState('');
   const [selectedGame, setSelectedGame] = useState(null);
+  const [notification, setNotification] = useState('');
+
+  // Helper to restore focus back to Game Name input
+  const restoreFocus = function () {
+    setTimeout(function () {
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      const el = document.getElementById('gameNameInput');
+      if (el) {
+        el.focus();
+      }
+    }, 50);
+  };
 
   // Fetch All Games from Database
   const fetchGames = function () {
@@ -33,7 +46,8 @@ export default function GameMaster() {
   const handleAddGame = function () {
     const trimmed = newGameName.toUpperCase().trim();
     if (!trimmed) {
-      alert('कृपया गेम का नाम दर्ज करें!');
+      setNotification('कृपया गेम का नाम दर्ज करें!');
+      restoreFocus();
       return;
     }
 
@@ -45,31 +59,32 @@ export default function GameMaster() {
       .then(function (res) { return res.json(); })
       .then(function (data) {
         if (data.success) {
+          setNotification('गेम सफलतापूर्वक ऐड हो गया!');
+          setTimeout(function () {
+            setNotification('');
+          }, 3000);
           setNewGameName('');
           fetchGames();
-          window.focus();
-          setTimeout(() => {
-            document.getElementById('gameNameInput')?.focus();
-          }, 50);
+          restoreFocus();
         } else {
-          alert('Error: ' + (data.message || 'गेम ऐेेड नहीं हो सका'));
+          setNotification('Error: ' + (data.message || 'गेम ऐेड नहीं हो सका'));
+          restoreFocus();
         }
       })
       .catch(function (err) {
         console.error('Add Game Error:', err);
-        alert('Server connection error!');
+        setNotification('Server connection error!');
+        restoreFocus();
       });
   };
 
-  // Delete Selected Game Handler
+  // Delete Selected Game Handler (No window.confirm popup)
   const handleDeleteGame = function () {
     if (!selectedGame) {
-      alert('कृपया डिलीट करने के लिए गेम सिलेक्ट करें!');
+      setNotification('कृपया डिलीट करने के लिए गेम सिलेक्ट करें!');
+      restoreFocus();
       return;
     }
-
-    const confirmDelete = window.confirm('क्या आप सच में ' + selectedGame.game_name + ' को डिलीट करना चाहते हैं?');
-    if (!confirmDelete) return;
 
     fetch('https://yantri-desktop.onrender.com/api/games/' + selectedGame.game_id, {
       method: 'DELETE'
@@ -78,15 +93,29 @@ export default function GameMaster() {
       .then(function (data) {
         if (data.success) {
           fetchGames();
-          alert('गेम डिलीट कर दिया गया!');
+          setNotification('गेम डिलीट कर दिया गया!');
+          setTimeout(function () {
+            setNotification('');
+          }, 3000);
+          restoreFocus();
         } else {
-          alert('Error: ' + (data.message || 'गेम डिलीट नहीं हो सका'));
+          setNotification('Error: ' + (data.message || 'गेम डिलीट नहीं हो सका'));
+          restoreFocus();
         }
       })
       .catch(function (err) {
         console.error('Delete Game Error:', err);
-        alert('Server connection error!');
+        setNotification('Server connection error!');
+        restoreFocus();
       });
+  };
+
+  // Enter Key Handler for Input
+  const handleInputKeyDown = function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddGame();
+    }
   };
 
   return (
@@ -98,24 +127,31 @@ export default function GameMaster() {
           Game Master
         </h3>
 
+        {/* Notifications Banner */}
+        {notification && (
+          <div style={{ background: '#d4edda', color: '#155724', padding: '4px 6px', marginBottom: '8px', border: '1px solid #c3e6cb', fontSize: '11px', fontWeight: 'bold', textAlign: 'center' }}>
+            {notification}
+          </div>
+        )}
+
         {/* Input & Add/Delete Controls */}
         <div style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             <span style={{ fontWeight: 'bold' }}>Name:</span>
             <input
-             id="gameNameInput"
-
+              id="gameNameInput"
               type="text"
               placeholder="e.g. NEW FB"
               value={newGameName}
               onChange={function (e) { setNewGameName(e.target.value); }}
+              onKeyDown={handleInputKeyDown}
+              autoFocus
               style={{ flex: 1, padding: '3px', border: '1px solid #7f9db9', textTransform: 'uppercase', fontWeight: 'bold' }}
             />
           </div>
 
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '4px' }}>
             <button
-
               onClick={handleAddGame}
               style={{ flex: 1, padding: '4px', background: '#ece9d8', border: '1px solid #777', fontWeight: 'bold', cursor: 'pointer', color: 'green' }}
             >

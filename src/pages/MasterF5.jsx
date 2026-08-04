@@ -47,13 +47,26 @@ export default function MasterF5() {
   const [totalUserSaleAmount, setTotalUserSaleAmount] = useState('0.0');
 
   const [userSaleLog, setUserSaleLog] = useState([]);
+  const [notification, setNotification] = useState('');
 
   // Helper to restore focus back to main Upload Date input
   const restoreFocus = function() {
-    window.focus();
     setTimeout(function() {
-      document.getElementById('f5UploadDateInput')?.focus();
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      const el = document.getElementById('f5UploadDateInput');
+      if (el) {
+        el.focus();
+      }
     }, 50);
+  };
+
+  const showNotify = function(msg) {
+    setNotification(msg);
+    setTimeout(function() {
+      setNotification('');
+    }, 3000);
   };
 
   // Date Change Handlers
@@ -117,10 +130,10 @@ export default function MasterF5() {
   const handleUploadSale = async function() {
     try {
       const res = await axios.post('https://yantri-desktop.onrender.com/api/master/upload-sale', { date: uploadDate, game: uploadGame });
-      alert(res.data.message || 'Sale Upload Successful!');
+      showNotify(res.data.message || 'Sale Upload Successful!');
       restoreFocus();
     } catch (err) { 
-      alert('Upload Sale failed!'); 
+      showNotify('Upload Sale failed!'); 
       restoreFocus();
     }
   };
@@ -132,11 +145,11 @@ export default function MasterF5() {
       });
       
       if(response.data.status) {
-        alert('Party uploaded successfully!');
+        showNotify('Party uploaded successfully!');
         restoreFocus();
       }
     } catch (error) {
-      alert('Upload Party failed!');
+      showNotify('Upload Party failed!');
       restoreFocus();
     }
   };
@@ -144,10 +157,10 @@ export default function MasterF5() {
   const handleDownloadSale = async function() {
     try {
       const res = await axios.post('https://yantri-desktop.onrender.com/api/master/download-sale', { date: downloadDate, game: downloadGame });
-      alert(res.data.message || 'Sale Download Completed!');
+      showNotify(res.data.message || 'Sale Download Completed!');
       restoreFocus();
     } catch (err) { 
-      alert('Download Sale failed!'); 
+      showNotify('Download Sale failed!'); 
       restoreFocus();
     }
   };
@@ -155,72 +168,59 @@ export default function MasterF5() {
   const handleDownloadParty = async function() {
     try {
       const res = await axios.post('https://yantri-desktop.onrender.com/api/master/download-party', { date: downloadDate, game: downloadGame });
-      alert(res.data.message || 'Party Accounts Downloaded Successfully!');
+      showNotify(res.data.message || 'Party Accounts Downloaded Successfully!');
       restoreFocus();
     } catch (err) { 
-      alert('Download Party failed!'); 
+      showNotify('Download Party failed!'); 
       restoreFocus();
     }
   };
 
   const handleDeleteDownloadedVouchers = async function() {
     if (!canDelete) {
-      alert('Access Denied: You do not have permission to delete vouchers.');
-      restoreFocus();
-      return;
-    }
-    if (!window.confirm('Delete downloaded vouchers?')) {
+      showNotify('Access Denied: You do not have permission to delete vouchers.');
       restoreFocus();
       return;
     }
     try {
       const res = await axios.post('https://yantri-desktop.onrender.com/api/master/delete-downloaded-vouchers');
-      alert(res.data.message || 'Downloaded Vouchers Deleted!');
+      showNotify(res.data.message || 'Downloaded Vouchers Deleted!');
       restoreFocus();
     } catch (err) { 
-      alert('Delete failed!'); 
+      showNotify('Delete failed!'); 
       restoreFocus();
     }
   };
 
   const handleDeleteWithOpening = async function() {
     if (!canDelete) {
-      alert('Access Denied: You do not have permission to delete.');
+      showNotify('Access Denied: You do not have permission to delete.');
       restoreFocus();
       return;
     }
     if (!deleteWithOpeningDate) {
-      alert('Please enter Till Date!');
-      restoreFocus();
-      return;
-    }
-    const confirmMsg = 'Delete Sale With Opening till ' + deleteWithOpeningDate + '?';
-    if (!window.confirm(confirmMsg)) {
+      showNotify('Please enter Till Date!');
       restoreFocus();
       return;
     }
     try {
       const res = await axios.post('https://yantri-desktop.onrender.com/api/master/delete-sale-with-opening', { tillDate: deleteWithOpeningDate });
-      alert(res.data.message);
+      showNotify(res.data.message || 'Delete With Opening Completed!');
       restoreFocus();
     } catch (err) { 
-      alert('Delete With Opening failed!'); 
+      showNotify('Delete With Opening failed!'); 
       restoreFocus();
     }
   };
 
   const handleDeleteWithoutOpening = async function() {
     if (!canDelete) {
-      alert('Access Denied: You do not have permission to delete.');
+      showNotify('Access Denied: You do not have permission to delete.');
       restoreFocus();
       return;
     }
     if (!deleteWithoutOpeningTill) {
-      alert('Please enter Till Date!');
-      restoreFocus();
-      return;
-    }
-    if (!window.confirm('Delete Sale Without Opening?')) {
+      showNotify('Please enter Till Date!');
       restoreFocus();
       return;
     }
@@ -230,26 +230,22 @@ export default function MasterF5() {
         tillDate: deleteWithoutOpeningTill,
         partyId: selectedParty
       });
-      alert(res.data.message);
+      showNotify(res.data.message || 'Delete Sale Completed!');
       restoreFocus();
     } catch (err) { 
-      alert('Delete Sale failed!'); 
+      showNotify('Delete Sale failed!'); 
       restoreFocus();
     }
   };
 
   const handleDeleteAccount = async function() {
     if (!canDelete) {
-      alert('Access Denied: You do not have permission to delete account.');
+      showNotify('Access Denied: You do not have permission to delete account.');
       restoreFocus();
       return;
     }
     if (deleteWithoutOpeningType === 'Selected Party' && !selectedParty) {
-      alert('Please choose a Party!');
-      restoreFocus();
-      return;
-    }
-    if (!window.confirm('Are you sure you want to delete account(s)?')) {
+      showNotify('Please choose a Party!');
       restoreFocus();
       return;
     }
@@ -258,10 +254,10 @@ export default function MasterF5() {
         type: deleteWithoutOpeningType,
         partyId: selectedParty
       });
-      alert(res.data.message);
+      showNotify(res.data.message || 'Delete Account Completed!');
       restoreFocus();
     } catch (err) { 
-      alert('Delete Account failed!'); 
+      showNotify('Delete Account failed!'); 
       restoreFocus();
     }
   };
@@ -275,7 +271,7 @@ export default function MasterF5() {
       setTotalUserSaleAmount(res.data.totalAmount || '0.0');
       restoreFocus();
     } catch (err) { 
-      alert('Error fetching user sale!'); 
+      showNotify('Error fetching user sale!'); 
       restoreFocus();
     }
   };
@@ -288,7 +284,7 @@ export default function MasterF5() {
       setUserSaleLog(res.data.logs || []);
       restoreFocus();
     } catch (err) { 
-      alert('Error fetching upload logs!'); 
+      showNotify('Error fetching upload logs!'); 
       restoreFocus();
     }
   };
@@ -314,6 +310,13 @@ export default function MasterF5() {
   return (
     <div style={{ padding: '8px', background: '#dcdcdc', minHeight: '93vh', fontSize: '11px', fontFamily: '"Segoe UI", Tahoma, Arial, sans-serif', display: 'flex', flexDirection: 'column', gap: '8px' }}>
       
+      {/* Top Notification Banner */}
+      {notification && (
+        <div style={{ background: '#d4edda', color: '#155724', padding: '6px 12px', border: '1px solid #c3e6cb', fontSize: '12px', fontWeight: 'bold', textAlign: 'center' }}>
+          {notification}
+        </div>
+      )}
+
       {/* Top Panel - Dynamic Columns Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: isAdmin ? '1.1fr 1.2fr 1.3fr 1.4fr' : '1fr 1fr 1.4fr', gap: '8px' }}>
         

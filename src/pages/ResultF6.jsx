@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 export default function ResultF6() {
@@ -21,12 +21,24 @@ export default function ResultF6() {
   const [resultHistory, setResultHistory] = useState([]);
   const [pendingList, setPendingList] = useState([]);
   const [selectedResultId, setSelectedResultId] = useState(null);
+  const [notification, setNotification] = useState('');
+
+  const dateInputRef = useRef(null);
+  const gameSelectRef = useRef(null);
+  const resultInputRef = useRef(null);
 
   // Helper to restore focus back to Result Input
   const restoreFocus = function() {
-    window.focus();
     setTimeout(function() {
-      document.getElementById('f6ResultValInput')?.focus();
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      if (resultInputRef.current) {
+        resultInputRef.current.focus();
+      } else {
+        const el = document.getElementById('f6ResultValInput');
+        if (el) el.focus();
+      }
     }, 50);
   };
 
@@ -120,7 +132,7 @@ export default function ResultF6() {
 
   const submitResultLogic = async function() {
     if (!resultVal) {
-      alert('Enter result number!');
+      setNotification('Enter result number!');
       restoreFocus();
       return;
     }
@@ -132,13 +144,18 @@ export default function ResultF6() {
         result_val: resultVal
       });
 
+      setNotification('Result Submitted Successfully!');
+      setTimeout(function() {
+        setNotification('');
+      }, 3000);
+
       setResultVal('');
       setSelectedResultId(null);
       fetchResultHistory();
       restoreFocus();
     } catch (err) {
       const serverErrMsg = err.response && err.response.data && (err.response.data.error || err.response.data.message);
-      alert('Error: ' + (serverErrMsg || err.message));
+      setNotification('Error: ' + (serverErrMsg || err.message));
       restoreFocus();
     }
   };
@@ -156,12 +173,16 @@ export default function ResultF6() {
         const url = 'https://yantri-desktop.onrender.com/api/results/delete/by-game?date=' + encodeURIComponent(resultDate) + '&game=' + encodeURIComponent(selectedGame);
         await axios.delete(url);
       }
+      setNotification('Result Deleted Successfully!');
+      setTimeout(function() {
+        setNotification('');
+      }, 3000);
       setSelectedResultId(null);
       setResultVal('');
       fetchResultHistory();
       restoreFocus();
     } catch (err) {
-      alert('Error deleting result!');
+      setNotification('Error deleting result!');
       restoreFocus();
     }
   };
@@ -171,6 +192,32 @@ export default function ResultF6() {
     if (row.date) setResultDate(row.date);
     if (row.shift) setSelectedGame(row.shift);
     if (row.result || row.result_val) setResultVal(row.result || row.result_val);
+  };
+
+  // On Enter Key Event Handlers for Navigation & Delete shortcut
+  const handleDateKeyDown = function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (gameSelectRef.current) {
+        gameSelectRef.current.focus();
+      }
+    }
+  };
+
+  const handleGameKeyDown = function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (resultInputRef.current) {
+        resultInputRef.current.focus();
+      }
+    }
+  };
+
+  const handleResultKeyDown = function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitResultLogic();
+    }
   };
 
   const panelBoxStyle = {
@@ -188,15 +235,35 @@ export default function ResultF6() {
         <div>
           <h3 style={{ textAlign: 'center', margin: '0 0 15px 0', fontSize: '14px', color: '#000', fontWeight: 'bold' }}>Result</h3>
           
+          {/* Notification Banner */}
+          {notification && (
+            <div style={{ background: '#d4edda', color: '#155724', padding: '4px 6px', marginBottom: '8px', border: '1px solid #c3e6cb', fontSize: '10px', fontWeight: 'bold', textAlign: 'center' }}>
+              {notification}
+            </div>
+          )}
+
           <form onSubmit={handleSubmitResult}>
             <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <label style={{ fontWeight: 'bold' }}>Date: </label>
-              <input type="text" value={resultDate} onChange={(e) => setResultDate(e.target.value)} style={{ width: '100px', padding: '2px 4px', fontWeight: 'bold', textAlign: 'center' }} />
+              <input 
+                ref={dateInputRef}
+                type="text" 
+                value={resultDate} 
+                onChange={(e) => setResultDate(e.target.value)} 
+                onKeyDown={handleDateKeyDown}
+                style={{ width: '100px', padding: '2px 4px', fontWeight: 'bold', textAlign: 'center' }} 
+              />
             </div>
 
             <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <label style={{ fontWeight: 'bold' }}>Game: </label>
-              <select value={selectedGame} onChange={(e) => setSelectedGame(e.target.value)} style={{ width: '108px', padding: '1px', fontWeight: 'bold' }}>
+              <select 
+                ref={gameSelectRef}
+                value={selectedGame} 
+                onChange={(e) => setSelectedGame(e.target.value)} 
+                onKeyDown={handleGameKeyDown}
+                style={{ width: '108px', padding: '1px', fontWeight: 'bold' }}
+              >
                 {gameList.length > 0 ? (
                   gameList.map(function(g) {
                     const gName = g.game_name || g;
@@ -212,9 +279,11 @@ export default function ResultF6() {
               <label style={{ fontWeight: 'bold' }}>Result: </label>
               <input 
                 id="f6ResultValInput"
+                ref={resultInputRef}
                 type="text" 
                 value={resultVal} 
                 onChange={(e) => setResultVal(e.target.value)} 
+                onKeyDown={handleResultKeyDown}
                 autoFocus
                 style={{ width: '100px', padding: '2px 4px', fontWeight: 'bold' }} 
               />

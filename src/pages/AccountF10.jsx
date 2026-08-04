@@ -20,6 +20,9 @@ export default function AccountF10() {
   const [narration, setNarration] = useState('');
   const [selectedAccId, setSelectedAccId] = useState(null);
 
+  // Custom Delete Confirm Modal State
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   // 2. History Filter State
   const [historyParty, setHistoryParty] = useState('All');
   const [historyType, setHistoryType] = useState('All');
@@ -30,10 +33,11 @@ export default function AccountF10() {
     return localStorage.getItem('f10_to_date') || getTodayDateStr();
   });
 
-  // 3. Data Lists & Totals
+  // 3. Data Lists, Totals & Notification State
   const [partiesList, setPartiesList] = useState([]);
   const [historyRows, setHistoryRows] = useState([]);
   const [totals, setTotals] = useState({ totalDiye: 0, totalLiye: 0 });
+  const [notification, setNotification] = useState('');
 
   // Persistence Handlers
   const handleEntryDateChange = function(e) {
@@ -54,11 +58,19 @@ export default function AccountF10() {
     localStorage.setItem('f10_to_date', val);
   };
 
-  // Helper to restore focus back to main input
-  const restoreFocus = function() {
-    window.focus();
+  // Helper to restore focus directly to Amount Input Box
+  const restoreFocusToAmount = function() {
     setTimeout(function() {
-      document.getElementById('party-select-f10')?.focus();
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      const el = document.getElementById('amount-input-f10');
+      if (el) {
+        el.focus();
+        if (typeof el.select === 'function') {
+          el.select();
+        }
+      }
     }, 50);
   };
 
@@ -136,16 +148,15 @@ export default function AccountF10() {
           });
 
           setTotals({ totalDiye: diyeSum, totalLiye: liyeSum });
-          restoreFocus();
         } else {
-          alert('Error: ' + (data.error || 'Failed to load history'));
-          restoreFocus();
+          setNotification('Error: ' + (data.error || 'Failed to load history'));
         }
+        restoreFocusToAmount();
       })
       .catch(function(err) {
         console.error('Fetch history error:', err);
-        alert('Server Connection Error!');
-        restoreFocus();
+        setNotification('Server Connection Error!');
+        restoreFocusToAmount();
       });
   };
 
@@ -157,17 +168,17 @@ export default function AccountF10() {
     setSelectedAccId(null);
   };
 
-  // Save or Update Entry (Rule: Party = Payment/Diye)
+  // Save or Update Entry
   const handleSave = function(e) {
     if (e) e.preventDefault();
     if (!party) {
-      alert('Please select Party (जिसको पैसे दिए)!');
-      restoreFocus();
+      setNotification('Please select Party (जिसको पैसे दिए)!');
+      restoreFocusToAmount();
       return;
     }
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      alert('Please enter valid Amount!');
-      restoreFocus();
+      setNotification('Please enter valid Amount!');
+      restoreFocusToAmount();
       return;
     }
 
@@ -177,7 +188,7 @@ export default function AccountF10() {
       opposite_party: oppositeParty,
       date_val: entryDate,
       amount: Number(amount),
-      type: 'Payment/Diye', // Fixed logic
+      type: 'Payment/Diye',
       narration: narration
     };
 
@@ -189,30 +200,37 @@ export default function AccountF10() {
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (data.success) {
-          alert(selectedAccId ? 'Transaction Updated Successfully!' : 'Transaction Saved Successfully!');
+          setNotification(selectedAccId ? 'Transaction Updated Successfully!' : 'Transaction Saved Successfully!');
+          setTimeout(function() {
+            setNotification('');
+          }, 3000);
           resetForm();
           fetchHistory();
         } else {
-          alert('Error: ' + (data.error || 'Failed to save transaction'));
-          restoreFocus();
+          setNotification('Error: ' + (data.error || 'Failed to save transaction'));
+          restoreFocusToAmount();
         }
       })
       .catch(function(err) {
         console.error('Save error:', err);
-        alert('Server Connection Error!');
-        restoreFocus();
+        setNotification('Server Connection Error!');
+        restoreFocusToAmount();
       });
   };
 
-  // Delete Entry
-  const handleDelete = function() {
+  // Open Custom Delete Modal
+  const handleOpenDeleteModal = function() {
     if (!selectedAccId) {
-      alert('Please select an entry from History grid to delete!');
-      restoreFocus();
+      setNotification('Please select an entry from History grid to delete!');
+      restoreFocusToAmount();
       return;
     }
+    setShowDeleteConfirm(true);
+  };
 
-    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
+  // Execute Actual Delete
+  const handleConfirmDelete = function() {
+    setShowDeleteConfirm(false);
 
     fetch('https://yantri-desktop.onrender.com/api/accounts/delete/' + selectedAccId, {
       method: 'DELETE'
@@ -220,18 +238,22 @@ export default function AccountF10() {
       .then(function(res) { return res.json(); })
       .then(function(data) {
         if (data.success) {
-          alert('Transaction Deleted Successfully!');
+          setNotification('Transaction Deleted Successfully!');
           resetForm();
           fetchHistory();
+
+          setTimeout(function() {
+            setNotification('');
+          }, 3000);
         } else {
-          alert('Error: ' + (data.error || 'Failed to delete transaction'));
-          restoreFocus();
+          setNotification('Error: ' + (data.error || 'Failed to delete transaction'));
+          restoreFocusToAmount();
         }
       })
       .catch(function(err) {
         console.error('Delete error:', err);
-        alert('Server Connection Error!');
-        restoreFocus();
+        setNotification('Server Connection Error!');
+        restoreFocusToAmount();
       });
   };
 
@@ -248,9 +270,46 @@ export default function AccountF10() {
   return (
     <div style={{ padding: '10px', background: '#dcdcdc', minHeight: '92vh', fontSize: '11px', display: 'flex', gap: '15px', fontFamily: '"Segoe UI", Tahoma, Arial, sans-serif', boxSizing: 'border-box' }}>
       
+      {/* Custom Windows Classic Style Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: '#ece9d8', border: '2px solid #0055ea', width: '300px', padding: '3px', boxShadow: '2px 2px 8px rgba(0,0,0,0.4)', fontFamily: 'Tahoma, sans-serif' }}>
+            <div style={{ background: 'linear-[#0058e6], [#3a93ff]', color: '#fff', padding: '3px 6px', fontWeight: 'bold', fontSize: '11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Confirm Delete</span>
+              <button onClick={function() { setShowDeleteConfirm(false); restoreFocusToAmount(); }} style={{ background: '#d13c23', color: '#fff', border: '1px solid #fff', width: '16px', height: '16px', cursor: 'pointer', fontSize: '10px', lineHeight: '10px', padding: 0 }}>✕</button>
+            </div>
+            <div style={{ padding: '15px 10px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', color: '#000' }}>
+              Are you sure you want to delete this transaction?
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', paddingBottom: '8px' }}>
+              <button
+                onClick={handleConfirmDelete}
+                autoFocus
+                style={{ padding: '3px 18px', background: '#ece9d8', border: '1px solid #7f9db9', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}
+              >
+                Yes
+              </button>
+              <button
+                onClick={function() { setShowDeleteConfirm(false); restoreFocusToAmount(); }}
+                style={{ padding: '3px 18px', background: '#ece9d8', border: '1px solid #7f9db9', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}
+              >
+                No
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Left Section: Accounts Entry Form */}
       <div style={{ width: '38%', border: '1px solid #7a96df', background: '#ece9d8', padding: '12px', display: 'flex', flexDirection: 'column' }}>
         <h3 style={{ textAlign: 'center', margin: '0 0 15px 0', fontSize: '14px', fontWeight: 'bold' }}>Accounts</h3>
+
+        {/* Notification Banner */}
+        {notification && (
+          <div style={{ background: '#d4edda', color: '#155724', padding: '4px 6px', marginBottom: '8px', border: '1px solid #c3e6cb', fontSize: '10px', fontWeight: 'bold', textAlign: 'center' }}>
+            {notification}
+          </div>
+        )}
 
         <form onSubmit={handleSave}>
           <div style={{ marginBottom: '10px' }}>
@@ -303,6 +362,7 @@ export default function AccountF10() {
           <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center' }}>
             <label style={{ width: '60px', fontWeight: 'bold' }}>Amount: </label>
             <input
+              id="amount-input-f10"
               type="text"
               value={amount}
               onChange={function(e) { setAmount(e.target.value); }}
@@ -337,7 +397,7 @@ export default function AccountF10() {
             </button>
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={handleOpenDeleteModal}
               style={{ padding: '5px 22px', background: '#800000', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', borderRadius: '2px' }}
             >
               Delete

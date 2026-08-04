@@ -28,15 +28,19 @@ export default function PartyF1({ userRole = 'Admin' }) {
   const [statusFilter, setStatusFilter] = useState('Active');
   const [selectedPno, setSelectedPno] = useState(null);
   
-  // नया स्टेट: अलर्ट की जगह बिना फोकस तोड़े स्क्रीन पर मैसेज दिखाने के लिए
+  // इन-लाइन मैसेज के लिए स्टेट
   const [notification, setNotification] = useState('');
+
+  // कस्टम डिलीट कंफर्म डायलॉग के लिए स्टेट
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [targetDeletePno, setTargetDeletePno] = useState(null);
 
   const currentUserId = 'User 0';
   
   const normalizedRole = String(userRole || '').toLowerCase();
   const isAdmin = normalizedRole === 'admin' || normalizedRole === 'super_admin' || userRole === 'Admin';
 
-  // फोकस को वापस 'Party Name' इनपुट पर लाने और इलेक्ट्रॉन विंडो को एक्टिव करने का पक्का तरीका
+  // कर्सर को बिना अटके सीधे ऊपर 'Party Name' इनपुट पर भेजने का पक्का तरीका
   const restoreFocus = function() {
     setTimeout(function() {
       if (typeof window !== 'undefined') {
@@ -45,7 +49,9 @@ export default function PartyF1({ userRole = 'Admin' }) {
       const el = document.getElementById('f1PartyNameInput');
       if (el) {
         el.focus();
-        el.click();
+        if (typeof el.select === 'function') {
+          el.select();
+        }
       }
     }, 50);
   };
@@ -118,10 +124,8 @@ export default function PartyF1({ userRole = 'Admin' }) {
     apiCall
       .then(function(res) {
         if (res.data && (res.data.success || res.data.pno)) {
-          // अलर्ट की जगह इन-लाइन मैसेज ताकि फोकस न टूटे
           setNotification(isEdit ? 'Party Updated Successfully!' : 'Party Saved Successfully!');
           
-          // 3 सेकंड बाद मैसेज अपने आप हट जाएगा
           setTimeout(function() {
             setNotification('');
           }, 3000);
@@ -140,36 +144,45 @@ export default function PartyF1({ userRole = 'Admin' }) {
       });
   };
 
-  const handleDelete = function(pno) {
+  // कस्टम डिलीट मोडल ओपन करने का फंक्शन
+  const handleOpenDeleteModal = function(pno) {
     if (!isAdmin) {
       setNotification('Only Admin can delete parties!');
       restoreFocus();
       return;
     }
+    setTargetDeletePno(pno);
+    setShowDeleteConfirm(true);
+  };
 
-    if (window.confirm('Are you sure you want to delete this party?')) {
-      axios.delete('https://yantri-desktop.onrender.com/api/parties/' + pno)
-        .then(function(res) {
-          if (res.data && res.data.success) {
-            setNotification('Party Deleted Successfully!');
-            setTimeout(function() {
-              setNotification('');
-            }, 3000);
-            handleReset();
-            fetchParties();
-          } else {
-            setNotification('Failed to delete party');
-            restoreFocus();
-          }
-        })
-        .catch(function(err) {
-          console.error('Delete error:', err);
-          setNotification('Server Error during deletion!');
-          restoreFocus();
-        });
-    } else {
+  // डिलीट का एक्चुअल एग्जीक्यूशन और सीधे 'Party Name' पर फोकस रीस्टोर
+  const handleConfirmDelete = function() {
+    setShowDeleteConfirm(false);
+
+    if (!targetDeletePno) {
       restoreFocus();
+      return;
     }
+
+    axios.delete('https://yantri-desktop.onrender.com/api/parties/' + targetDeletePno)
+      .then(function(res) {
+        if (res.data && res.data.success) {
+          setNotification('Party Deleted Successfully!');
+          setTimeout(function() {
+            setNotification('');
+          }, 3000);
+          handleReset();
+          fetchParties();
+        } else {
+          setNotification('Failed to delete party');
+          restoreFocus();
+        }
+      })
+      .catch(function(err) {
+        console.error('Delete error:', err);
+        setNotification('Server Error during deletion!');
+        restoreFocus();
+      });
   };
 
   const handleSelectRow = function(p) {
@@ -206,6 +219,36 @@ export default function PartyF1({ userRole = 'Admin' }) {
   return (
     <div style={{ padding: '4px', background: '#d4d0c8', height: '88vh', maxHeight: '88vh', fontSize: '11px', fontFamily: 'Tahoma, Arial, sans-serif', display: 'flex', gap: '6px', overflow: 'hidden' }}>
       
+      {/* Custom Windows Style Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: '#ece9d8', border: '2px solid #0055ea', width: '300px', padding: '3px', boxShadow: '2px 2px 8px rgba(0,0,0,0.4)', fontFamily: 'Tahoma, sans-serif' }}>
+            <div style={{ background: '#0055ea', color: '#fff', padding: '3px 6px', fontWeight: 'bold', fontSize: '11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Confirm Delete</span>
+              <button onClick={function() { setShowDeleteConfirm(false); restoreFocus(); }} style={{ background: '#d13c23', color: '#fff', border: '1px solid #fff', width: '16px', height: '16px', cursor: 'pointer', fontSize: '10px', lineHeight: '10px', padding: 0 }}>✕</button>
+            </div>
+            <div style={{ padding: '15px 10px', textAlign: 'center', fontSize: '11px', fontWeight: 'bold', color: '#000' }}>
+              Are you sure you want to delete this party?
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', paddingBottom: '8px' }}>
+              <button
+                onClick={handleConfirmDelete}
+                autoFocus
+                style={{ padding: '3px 18px', background: '#ece9d8', border: '1px solid #7f9db9', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}
+              >
+                Yes
+              </button>
+              <button
+                onClick={function() { setShowDeleteConfirm(false); restoreFocus(); }}
+                style={{ padding: '3px 18px', background: '#ece9d8', border: '1px solid #7f9db9', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px' }}
+              >
+                No
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Left Box: Form Area */}
       {isAdmin && (
         <div style={{ width: '310px', border: '1px solid #808080', background: '#d4d0c8', padding: '6px', display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -218,7 +261,7 @@ export default function PartyF1({ userRole = 'Admin' }) {
             <span style={{ width: '30px' }}></span>
           </div>
 
-          {/* नोटिफिकेशन बैनर: बिना फोकस तोड़े सफलता या गलती दिखाने के लिए */}
+          {/* नोटिफिकेशन बैनर */}
           {notification && (
             <div style={{ background: '#d4edda', color: '#155724', padding: '4px 6px', marginBottom: '4px', border: '1px solid #c3e6cb', fontSize: '10px', fontWeight: 'bold', textAlign: 'center' }}>
               {notification}
@@ -353,7 +396,7 @@ export default function PartyF1({ userRole = 'Admin' }) {
             {/* Save / Delete Button Container */}
             <div style={{ textAlign: 'center', marginTop: '4px', paddingTop: '4px', borderTop: '1px solid #a0a0a0', display: 'flex', justifyContent: 'center', gap: '10px' }}>
               {selectedPno && (
-                <button type="button" onClick={function() { handleDelete(selectedPno); }} style={{ padding: '2px 14px', background: '#ff4d4d', color: '#fff', border: '1px solid #808080', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                <button type="button" onClick={function() { handleOpenDeleteModal(selectedPno); }} style={{ padding: '2px 14px', background: '#ff4d4d', color: '#fff', border: '1px solid #808080', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
                   Delete
                 </button>
               )}

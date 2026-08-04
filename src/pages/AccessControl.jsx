@@ -45,9 +45,21 @@ export default function AccessControl() {
 
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [notification, setNotification] = useState('');
 
   const usernameInputRef = useRef(null);
   const userSelectRef = useRef(null);
+
+  const restoreFocus = function() {
+    setTimeout(function() {
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      if (usernameInputRef.current) {
+        usernameInputRef.current.focus();
+      }
+    }, 50);
+  };
 
   const isChecked = (val) => {
     return Number(val) === 1 || val === true || val === '1';
@@ -120,21 +132,29 @@ export default function AccessControl() {
     })
       .then((res) => res.json())
       .then(() => {
-        alert('User permissions updated successfully!');
+        setNotification('User permissions updated successfully!');
+        setTimeout(function() {
+          setNotification('');
+        }, 3000);
         
-        // ताज़ा डेटाबेस से लोड करें और पूरे ऐप Context में सिंक करें
         loadUserPermissions(selectedUserId);
         if (fetchPermissions) {
           fetchPermissions(selectedUserId);
         }
+        restoreFocus();
       })
-      .catch((err) => console.error('Save permissions error:', err));
+      .catch((err) => {
+        console.error('Save permissions error:', err);
+        setNotification('Error saving permissions!');
+        restoreFocus();
+      });
   };
 
   const handleCreateUser = (e) => {
     e.preventDefault();
     if (!newUsername.trim() || !newPassword.trim()) {
-      alert('Please enter both Username and Password');
+      setNotification('Please enter both Username and Password');
+      restoreFocus();
       return;
     }
 
@@ -150,21 +170,36 @@ export default function AccessControl() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          alert('User created successfully!');
+          setNotification('User created successfully!');
+          setTimeout(function() {
+            setNotification('');
+          }, 3000);
           setNewUsername('');
           setNewPassword('');
           fetchUsers();
         } else {
-          alert('Error: ' + (data.error || 'Failed to create user'));
+          setNotification('Error: ' + (data.error || 'Failed to create user'));
         }
+        restoreFocus();
       })
-      .catch((err) => console.error('Create user error:', err));
+      .catch((err) => {
+        console.error('Create user error:', err);
+        setNotification('Error creating user!');
+        restoreFocus();
+      });
   };
 
   return (
     <div style={{ padding: '20px', background: '#ece9d8', minHeight: '90vh', fontFamily: '"Segoe UI", Tahoma, Arial, sans-serif' }}>
       <h2 style={{ margin: '0 0 15px 0', color: '#0a246a', fontWeight: 'bold' }}>Super Admin - User Access Control</h2>
       
+      {/* Notifications Banner */}
+      {notification && (
+        <div style={{ background: '#d4edda', color: '#155724', padding: '6px 12px', marginBottom: '15px', border: '1px solid #c3e6cb', fontSize: '12px', fontWeight: 'bold', maxWidth: '600px' }}>
+          {notification}
+        </div>
+      )}
+
       {/* Add New User */}
       <div style={{ background: '#fff', padding: '15px', border: '1px solid #7a96df', marginBottom: '20px', maxWidth: '600px' }}>
         <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#000', fontWeight: 'bold' }}>➕ Add New User</h3>

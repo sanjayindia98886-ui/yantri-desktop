@@ -37,9 +37,17 @@ export default function BalanceHistoryF8() {
 
   // Helper to restore focus back to Date input
   const restoreFocus = function() {
-    window.focus();
     setTimeout(function() {
-      document.getElementById('f8FromDateInput')?.focus();
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      const el = document.getElementById('f8FromDateInput');
+      if (el) {
+        el.focus();
+        if (typeof el.select === 'function') {
+          el.select();
+        }
+      }
     }, 50);
   };
 
@@ -101,42 +109,46 @@ export default function BalanceHistoryF8() {
     }
   }, [selectedSaleIndex, activeTable]);
 
-  const fetchBalanceHistory = async (overrideWithoutHissa) => {
+  const fetchBalanceHistory = function(overrideWithoutHissa) {
     const checkHissa = overrideWithoutHissa !== undefined ? overrideWithoutHissa : withoutHissa;
     setLoading(true);
-    try {
-      const url = 'https://yantri-desktop.onrender.com/api/balance-history?fromDate=' + fromDate + '&toDate=' + toDate + '&withoutHissa=' + checkHissa;
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.success) {
-        const fetchedGames = data.games || [];
-        const fetchedRows = data.rows || [];
-        setGames(fetchedGames);
-        setHistoryData(fetchedRows);
-        setShiftBalance(data.shiftBalance || {});
-        setShiftSale(data.shiftSale || {});
-        setIsLoaded(true);
+    
+    const url = 'https://yantri-desktop.onrender.com/api/balance-history?fromDate=' + encodeURIComponent(fromDate) + '&toDate=' + encodeURIComponent(toDate) + '&withoutHissa=' + checkHissa;
+    
+    fetch(url)
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.success) {
+          const fetchedGames = data.games || [];
+          const fetchedRows = data.rows || [];
+          setGames(fetchedGames);
+          setHistoryData(fetchedRows);
+          setShiftBalance(data.shiftBalance || {});
+          setShiftSale(data.shiftSale || {});
+          setIsLoaded(true);
 
-        if (fetchedRows.length > 0) setSelectedTopRow(0);
-        if (fetchedGames.length > 0) {
-          setSelectedBalIndex(0);
-          setSelectedSaleIndex(0);
+          if (fetchedRows.length > 0) setSelectedTopRow(0);
+          if (fetchedGames.length > 0) {
+            setSelectedBalIndex(0);
+            setSelectedSaleIndex(0);
+          }
+          restoreFocus();
         }
+      })
+      .catch(function(error) {
+        console.error('Error fetching balance history:', error);
         restoreFocus();
-      }
-    } catch (error) {
-      console.error('Error fetching balance history:', error);
-      restoreFocus();
-    } finally {
-      setLoading(false);
-    }
+      })
+      .finally(function() {
+        setLoading(false);
+      });
   };
 
-  const handleShowClick = () => {
+  const handleShowClick = function() {
     fetchBalanceHistory(withoutHissa);
   };
 
-  const handleWithoutHissaChange = (e) => {
+  const handleWithoutHissaChange = function(e) {
     const isChecked = e.target.checked;
     setWithoutHissa(isChecked);
     if (isLoaded) {
@@ -144,8 +156,9 @@ export default function BalanceHistoryF8() {
     }
   };
 
-  const handlePrint = () => {
+  const handlePrint = function() {
     window.print();
+    restoreFocus();
   };
 
   const cssStyles = 
@@ -191,12 +204,12 @@ export default function BalanceHistoryF8() {
       {/* Top Filter Bar */}
       <div className="filter-bar">
         <span>Type: </span>
-        <select value={balanceType} onChange={(e) => setBalanceType(e.target.value)} style={{ fontWeight: 'bold' }}>
+        <select value={balanceType} onChange={function(e) { setBalanceType(e.target.value); }} style={{ fontWeight: 'bold' }}>
           <option value="/ Daily Balance / Win">/ Daily Balance / Win</option>
         </select>
 
-        <span>Date: <input id="f8FromDateInput" type="text" value={fromDate} onChange={(e) => setFromDate(e.target.value)} autoFocus style={{ width: '75px', textAlign: 'center', fontWeight: 'bold' }} /></span>
-        <span>To: <input type="text" value={toDate} onChange={(e) => setToDate(e.target.value)} style={{ width: '75px', textAlign: 'center', fontWeight: 'bold' }} /></span>
+        <span>Date: <input id="f8FromDateInput" type="text" value={fromDate} onChange={function(e) { setFromDate(e.target.value); }} autoFocus style={{ width: '75px', textAlign: 'center', fontWeight: 'bold' }} /></span>
+        <span>To: <input type="text" value={toDate} onChange={function(e) { setToDate(e.target.value); }} style={{ width: '75px', textAlign: 'center', fontWeight: 'bold' }} /></span>
 
         <button onClick={handleShowClick} style={{ padding: '1px 12px', cursor: 'pointer', fontWeight: 'bold' }}>
           {loading ? 'Loading...' : 'Show'}

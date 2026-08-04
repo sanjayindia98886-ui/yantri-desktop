@@ -28,6 +28,7 @@ export default function BalanceSheetF11() {
   const [rows, setRows] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [partyDetails, setPartyDetails] = useState(null);
+  const [notification, setNotification] = useState('');
 
   const [totals, setTotals] = useState({
     grandOpening: 0,
@@ -41,11 +42,23 @@ export default function BalanceSheetF11() {
     rightNetBalance: 0
   });
 
+  const showNotify = function(msg) {
+    setNotification(msg);
+    setTimeout(function() {
+      setNotification('');
+    }, 3000);
+  };
+
   // Helper to restore focus back to Ctrl+F Search Input
   const restoreFocus = function() {
-    window.focus();
     setTimeout(function() {
-      document.getElementById('ctrl-f-input-f11')?.focus();
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      const el = document.getElementById('ctrl-f-input-f11');
+      if (el) {
+        el.focus();
+      }
     }, 50);
   };
 
@@ -191,7 +204,7 @@ export default function BalanceSheetF11() {
   const handleDownloadPDF = function() {
     const element = document.getElementById('party-statement-print-area');
     if (!element) {
-      alert('Please select a party to download PDF!');
+      showNotify('Please select a party to download PDF!');
       restoreFocus();
       return;
     }
@@ -212,6 +225,13 @@ export default function BalanceSheetF11() {
   return (
     <div style={{ padding: '8px', background: '#dcdcdc', minHeight: '93vh', fontSize: '11px', fontFamily: '"Segoe UI", Tahoma, Arial, sans-serif', boxSizing: 'border-box' }}>
       
+      {/* Top Notification Banner */}
+      {notification && (
+        <div style={{ background: '#d4edda', color: '#155724', padding: '4px 8px', marginBottom: '4px', border: '1px solid #c3e6cb', fontSize: '11px', fontWeight: 'bold', textAlign: 'center' }}>
+          {notification}
+        </div>
+      )}
+
       {/* 1. TOP FILTER BAR */}
       <div style={{ background: '#ece9d8', border: '1px solid #7a96df', padding: '6px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
         

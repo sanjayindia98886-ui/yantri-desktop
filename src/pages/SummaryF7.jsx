@@ -21,6 +21,7 @@ export default function SummaryF7() {
   const [withoutHissa, setWithoutHissa] = useState(false);
 
   const [summaryRows, setSummaryRows] = useState([]);
+  const [notification, setNotification] = useState('');
   const [totals, setTotals] = useState({
     d_sale: 0,
     a_sale: 0,
@@ -39,11 +40,23 @@ export default function SummaryF7() {
     final_net_balance: 0
   });
 
+  const showNotify = function(msg) {
+    setNotification(msg);
+    setTimeout(function() {
+      setNotification('');
+    }, 3000);
+  };
+
   // Focus Helper Function
   const restoreFocus = function() {
-    window.focus();
     setTimeout(function() {
-      document.getElementById('f7AgentSelect')?.focus();
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      const el = document.getElementById('f7AgentSelect');
+      if (el) {
+        el.focus();
+      }
     }, 50);
   };
 
@@ -63,7 +76,7 @@ export default function SummaryF7() {
 
   const fetchSummary = function() {
     if (!selectedAgent) {
-      alert('Please select an Agent!');
+      showNotify('Please select an Agent!');
       restoreFocus();
       return;
     }
@@ -99,13 +112,13 @@ export default function SummaryF7() {
           });
           restoreFocus();
         } else {
-          alert('Error: ' + (data.error || 'Unable to fetch summary'));
+          showNotify('Error: ' + (data.error || 'Unable to fetch summary'));
           restoreFocus();
         }
       })
       .catch(function(err) {
         console.error('Error fetching summary:', err);
-        alert('Server Connection Error!');
+        showNotify('Server Connection Error!');
         restoreFocus();
       });
   };
@@ -113,6 +126,13 @@ export default function SummaryF7() {
   return (
     <div style={{ padding: '4px', background: '#d4d0c8', height: '88vh', maxHeight: '88vh', fontSize: '11px', fontFamily: 'Tahoma, Arial, sans-serif', display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
       
+      {/* Top Notification Banner */}
+      {notification && (
+        <div style={{ background: '#d4edda', color: '#155724', padding: '4px 8px', border: '1px solid #c3e6cb', fontSize: '11px', fontWeight: 'bold', textAlign: 'center' }}>
+          {notification}
+        </div>
+      )}
+
       {/* 1. Top Section Title & All Game Checkbox */}
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
         <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', fontFamily: 'Tahoma, sans-serif' }}>Summary</h2>

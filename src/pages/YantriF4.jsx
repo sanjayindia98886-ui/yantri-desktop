@@ -52,14 +52,27 @@ export default function YantriF4() {
   const [highAmtClient, setHighAmtClient] = useState('');
 
   const [outputText, setOutputText] = useState('');
+  const [notification, setNotification] = useState('');
 
   const [isProfitLossOpen, setIsProfitLossOpen] = useState(false);
 
+  const showNotify = function(msg) {
+    setNotification(msg);
+    setTimeout(function() {
+      setNotification('');
+    }, 3000);
+  };
+
   // Helper to restore focus back to Date input
   const restoreFocus = function() {
-    window.focus();
     setTimeout(function() {
-      document.getElementById('f4DateInput')?.focus();
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      const el = document.getElementById('f4DateInput');
+      if (el) {
+        el.focus();
+      }
     }, 50);
   };
 
@@ -70,9 +83,6 @@ export default function YantriF4() {
       fetchUsersList();
     }
   }, [user]);
-
-  useEffect(function() {
-  }, []);
 
   const fetchUsersList = function() {
     fetch('https://yantri-desktop.onrender.com/api/access/users')
@@ -355,6 +365,7 @@ export default function YantriF4() {
   const handleCopyText = function() {
     if (outputText) {
       navigator.clipboard.writeText(outputText);
+      showNotify('Copied to clipboard!');
     }
   };
 
@@ -396,6 +407,13 @@ export default function YantriF4() {
   return (
     <div style={{ padding: '4px', background: '#d4d0c8', height: '88vh', maxHeight: '88vh', fontSize: '11px', fontFamily: '"Segoe UI", Tahoma, Arial, sans-serif', display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
       
+      {/* Top Notification Banner */}
+      {notification && (
+        <div style={{ background: '#d4edda', color: '#155724', padding: '3px 8px', border: '1px solid #c3e6cb', fontSize: '11px', fontWeight: 'bold', textAlign: 'center' }}>
+          {notification}
+        </div>
+      )}
+
       {/* Top Controls Bar */}
       <div style={{ display: 'flex', gap: '6px', background: '#d4d0c8', padding: '3px 6px', border: '1px solid #808080', alignItems: 'center', flexShrink: 0 }}>
         <div>
