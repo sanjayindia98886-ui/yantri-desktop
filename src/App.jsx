@@ -8,19 +8,19 @@ import { getCompanyId, getLicenseKey } from './utils/companyService';
 export default function App() {
   const [hasLicense, setHasLicense] = useState(false);
 
-  useEffect(() => {
+  // useEffect(() => {
     // जब भी ऐप में कहीं भी क्लिक हो, यह बटन या इनपुट पर अटका हुआ 'blur' हटा देगा
-    const handleGlobalClick = (e) => {
-      if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
-        setTimeout(() => {
-          document.activeElement.blur();
-        }, 50);
-      }
-    };
+   // const handleGlobalClick = (e) => {
+     // if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
+      //  setTimeout(() => {
+       //   document.activeElement.blur();
+       // }, 50);
+     // }
+   // };
 
-    window.addEventListener('click', handleGlobalClick);
-    return () => window.removeEventListener('click', handleGlobalClick);
-  }, []);
+   // window.addEventListener('click', handleGlobalClick);
+   // return () => window.removeEventListener('click', handleGlobalClick);
+ // }, []);
 
   useEffect(() => {
     // चेक करें कि लोकल स्टोरेज में लाइसेंस और कंपनी आईडी मौजूद है या नहीं

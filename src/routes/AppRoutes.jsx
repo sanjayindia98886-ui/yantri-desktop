@@ -62,9 +62,9 @@ export default function AppRoutes() {
     }
   };
 
-  useEffect(() => {
-    checkSoftwareLicense();
-  }, []);
+  // useEffect(() => {
+    // checkSoftwareLicense();
+  // }, []);
 
   return (
     <>
