@@ -108,8 +108,7 @@ export default function PartyF1({ userRole = 'Admin' }) {
     const apiCall = isEdit 
       ? axios.put('https://yantri-desktop.onrender.com/api/parties', formData)
       : axios.post('https://yantri-desktop.onrender.com/api/parties', formData);
-
- apiCall
+apiCall
   .then(function(res) {
     if (res.data && (res.data.success || res.data.pno)) {
       // 1. पहले फॉर्म रिसेट और डेटा फेच करें
@@ -129,6 +128,7 @@ export default function PartyF1({ userRole = 'Admin' }) {
       restoreFocus();
     }
   })
+  };
 
   const handleDelete = function(pno) {
     if (!isAdmin) {
