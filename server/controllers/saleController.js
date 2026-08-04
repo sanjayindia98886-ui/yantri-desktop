@@ -106,7 +106,7 @@ const saveVoucherSale = async (req, res) => {
 };
 
 // 2. Fetch Summary for Right Side Table
-const getPartySalesSummary = (req, res) => {
+const getPartySalesSummary = async (req, res) => {
   const date = String(req.query.date || '').trim();
   const game = String(req.query.game || '').trim();
   const userId = req.query.userId ? String(req.query.userId).trim() : null;
@@ -118,46 +118,53 @@ const getPartySalesSummary = (req, res) => {
     "COALESCE(s.patti_perc, p.patti_perc, 0) AS patti_perc " +
     "FROM sales s " +
     "LEFT JOIN parties p ON LOWER(TRIM(s.party_name)) = LOWER(TRIM(p.party_name)) " +
-    "WHERE LOWER(TRIM(s.sale_date)) = LOWER(TRIM(?)) " +
-    "AND LOWER(TRIM(s.game_name)) = LOWER(TRIM(?)) ";
+    "WHERE LOWER(TRIM(s.sale_date)) = LOWER(TRIM($1)) " +
+    "AND LOWER(TRIM(s.game_name)) = LOWER(TRIM($2)) ";
 
   const params = [date, game];
 
   if (role !== 'super_admin' && userId) {
-    query += " AND CAST(s.uid AS TEXT) = CAST(? AS TEXT) ";
+    query += " AND CAST(s.uid AS TEXT) = CAST($3 AS TEXT) ";
     params.push(userId);
   }
 
   query += " ORDER BY s.sale_id ASC";
 
-  db.all(query, params, (err, rows) => {
-    if (err) {
-      console.error('Error fetching sales list:', err.message);
-      return res.status(500).json({ error: err.message });
-    }
-    res.json(rows || []);
-  });
+  try {
+    const result = await db.query(query, params);
+    return res.json(result.rows || []);
+  } catch (err) {
+    console.error('Error fetching sales list:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
 };
 
 // 3. Fetch Specific Voucher Items
-const getVoucherDetails = (req, res) => {
+const getVoucherDetails = async (req, res) => {
   const saleId = req.params.saleId;
-  const query = "SELECT number_val AS no, amount, bet_type FROM sale_items WHERE sale_id = ? ORDER BY item_id ASC";
+  const query = "SELECT number_val AS no, amount, bet_type FROM sale_items WHERE sale_id = $1 ORDER BY item_id ASC";
 
-  db.all(query, [saleId], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
-    res.json({ success: true, items: rows || [] });
-  });
+  try {
+    const result = await db.query(query, [saleId]);
+    return res.json({ success: true, items: result.rows || [] });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
 };
 
 // 4. Update Existing Voucher Sale
-const updateVoucherSale = (req, res) => {
+const updateVoucherSale = async (req, res) => {
   const saleId = req.params.saleId;
   const items = req.body.items || [];
   const party = String(req.body.party || '').trim();
   const date = String(req.body.date || '').trim();
+  const hissaParty = String(req.body.hissaParty || '').trim();
+  const hissaPerc = String(req.body.hissaPerc || '0').trim();
+  const d_comm = Number(req.body.d_comm) || 10;
+  const d_amt = Number(req.body.d_amt) || 90;
+  const a_comm = Number(req.body.a_comm) || 10;
+  const a_amt = Number(req.body.a_amt) || 9;
+  const patti_perc = Number(req.body.patti_perc) || 0;
 
   if (!party) {
     return res.status(400).json({ success: false, error: 'Party name is required' });
@@ -169,80 +176,55 @@ const updateVoucherSale = (req, res) => {
   });
 
   const entryDateTime = buildEntryDateTime(date);
+  const thirdPartyHissaStr = hissaParty ? (hissaParty + ' ' + hissaPerc + '%') : '0';
 
-  db.serialize(() => {
-    db.run("BEGIN TRANSACTION");
+  try {
+    const updateQuery = "UPDATE sales SET party_name = $1, total_amount = $2, entry_date_time = $3, d_comm = $4, d_amt = $5, a_comm = $6, a_amt = $7, patti_perc = $8, third_party_hissa = $9 WHERE sale_id = $10;";
+    await db.query(updateQuery, [party, total_amount, entryDateTime, d_comm, d_amt, a_comm, a_amt, patti_perc, thirdPartyHissaStr, saleId]);
 
-    const updateQuery = "UPDATE sales SET party_name = ?, total_amount = ?, entry_date_time = ? WHERE sale_id = ?";
-    db.run(updateQuery, [party, total_amount, entryDateTime, saleId], (err) => {
-      if (err) {
-        db.run("ROLLBACK");
-        return res.status(500).json({ success: false, error: err.message });
+    const deleteItemsQuery = "DELETE FROM sale_items WHERE sale_id = $1;";
+    await db.query(deleteItemsQuery, [saleId]);
+
+    if (items.length > 0) {
+      for (let i = 0; i < items.length; i++) {
+        const numVal = String(items[i].number_val || items[i].no || '').trim();
+        const amtVal = Number(items[i].amount) || 0;
+        const betTypeVal = detectBetType(numVal, items[i].bet_type || items[i].type);
+
+        const insertItemQuery = "INSERT INTO sale_items (sale_id, number_val, amount, bet_type) VALUES ($1, $2, $3, $4);";
+        await db.query(insertItemQuery, [saleId, numVal, amtVal, betTypeVal]);
       }
+    }
 
-      db.run("DELETE FROM sale_items WHERE sale_id = ?", [saleId], (delErr) => {
-        if (delErr) {
-          db.run("ROLLBACK");
-          return res.status(500).json({ success: false, error: delErr.message });
-        }
-
-        if (items.length > 0) {
-          const stmt = db.prepare("INSERT INTO sale_items (sale_id, number_val, amount, bet_type) VALUES (?, ?, ?, ?)");
-          for (let i = 0; i < items.length; i++) {
-            const numVal = String(items[i].number_val || items[i].no || '').trim();
-            const amtVal = Number(items[i].amount) || 0;
-            const betTypeVal = detectBetType(numVal, items[i].bet_type || items[i].type);
-
-            stmt.run([saleId, numVal, amtVal, betTypeVal]);
-          }
-          stmt.finalize((stmtErr) => {
-            if (stmtErr) {
-              db.run("ROLLBACK");
-              return res.status(500).json({ success: false, error: stmtErr.message });
-            }
-            db.run("COMMIT", (commitErr) => {
-              if (commitErr) return res.status(500).json({ success: false, error: commitErr.message });
-              return res.json({ success: true, message: 'Voucher Updated Successfully', entry_date_time: entryDateTime });
-            });
-          });
-        } else {
-          db.run("COMMIT", (commitErr) => {
-            if (commitErr) return res.status(500).json({ success: false, error: commitErr.message });
-            return res.json({ success: true, message: 'Voucher Updated Successfully', entry_date_time: entryDateTime });
-          });
-        }
-      });
+    return res.json({ 
+      success: true, 
+      message: 'Voucher Updated Successfully', 
+      entry_date_time: entryDateTime 
     });
-  });
+
+  } catch (err) {
+    console.error("Voucher Update Server Error:", err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
 };
 
 // 5. Delete Voucher Sale
-const deleteVoucherSale = (req, res) => {
+const deleteVoucherSale = async (req, res) => {
   const saleId = req.params.saleId;
 
-  db.serialize(() => {
-    db.run("BEGIN TRANSACTION");
-    db.run("DELETE FROM sale_items WHERE sale_id = ?", [saleId], (err1) => {
-      if (err1) {
-        db.run("ROLLBACK");
-        return res.status(500).json({ success: false, error: err1.message });
-      }
-      db.run("DELETE FROM sales WHERE sale_id = ?", [saleId], (err2) => {
-        if (err2) {
-          db.run("ROLLBACK");
-          return res.status(500).json({ success: false, error: err2.message });
-        }
-        db.run("COMMIT", (commitErr) => {
-          if (commitErr) return res.status(500).json({ success: false, error: commitErr.message });
-          return res.json({ success: true, message: 'Voucher Deleted Successfully' });
-        });
-      });
-    });
-  });
+  try {
+    await db.query("DELETE FROM sale_items WHERE sale_id = $1;", [saleId]);
+    await db.query("DELETE FROM sales WHERE sale_id = $1;", [saleId]);
+
+    return res.json({ success: true, message: 'Voucher Deleted Successfully' });
+  } catch (err) {
+    console.error("Voucher Delete Server Error:", err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
 };
 
 // 6. Move Voucher Sale (Updated to save new Rates & Patti Perc)
-const moveVoucherSale = (req, res) => {
+const moveVoucherSale = async (req, res) => {
   const saleId = req.params.saleId;
   const newDate = String(req.body.newDate || '').trim();
   const newGame = String(req.body.newGame || '').trim();
@@ -258,21 +240,21 @@ const moveVoucherSale = (req, res) => {
     return res.status(400).json({ success: false, error: 'Date, Game, and Party are required for moving' });
   }
 
-  const moveQuery = "UPDATE sales SET sale_date = ?, game_name = ?, party_name = ?, d_comm = ?, d_amt = ?, a_comm = ?, a_amt = ?, patti_perc = ? WHERE sale_id = ?";
-  db.run(moveQuery, [newDate, newGame, newParty, d_comm, d_amt, a_comm, a_amt, patti_perc, saleId], function (err) {
-    if (err) {
-      // Fallback if rate columns are missing
-      const fallbackQuery = "UPDATE sales SET sale_date = ?, game_name = ?, party_name = ? WHERE sale_id = ?";
-      db.run(fallbackQuery, [newDate, newGame, newParty, saleId], function (fbErr) {
-        if (fbErr) {
-          return res.status(500).json({ success: false, error: fbErr.message });
-        }
-        return res.json({ success: true, message: 'Voucher Moved Successfully' });
-      });
-    } else {
+  try {
+    const moveQuery = "UPDATE sales SET sale_date = $1, game_name = $2, party_name = $3, d_comm = $4, d_amt = $5, a_comm = $6, a_amt = $7, patti_perc = $8 WHERE sale_id = $9;";
+    await db.query(moveQuery, [newDate, newGame, newParty, d_comm, d_amt, a_comm, a_amt, patti_perc, saleId]);
+
+    return res.json({ success: true, message: 'Voucher Moved Successfully' });
+  } catch (err) {
+    try {
+      const fallbackQuery = "UPDATE sales SET sale_date = $1, game_name = $2, party_name = $3 WHERE sale_id = $4;";
+      await db.query(fallbackQuery, [newDate, newGame, newParty, saleId]);
       return res.json({ success: true, message: 'Voucher Moved Successfully' });
+    } catch (fbErr) {
+      console.error("Voucher Move Server Error:", fbErr.message);
+      return res.status(500).json({ success: false, error: fbErr.message });
     }
-  });
+  }
 };
 
 module.exports = {

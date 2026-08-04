@@ -689,6 +689,8 @@ export default function VoucherSaleF2() {
         a_comm: aPcomm,
         a_amt: aAmt,
         patti_perc: pattiPerc,
+        hissaParty: hissaParty,
+        hissaPerc: hissaPerc,
         items: validItems
       })
     })
@@ -702,7 +704,10 @@ export default function VoucherSaleF2() {
           setFormErrorMsg('❌ Update Error: ' + (data.error || 'Failed'));
         }
       })
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        console.error(err);
+        setFormErrorMsg('❌ Connection Error with Server during update');
+      });
   };
 
   const handleCopy = () => {
@@ -821,6 +826,14 @@ export default function VoucherSaleF2() {
         return;
       }
 
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        e.stopPropagation();
+        const partyElem = document.getElementById('party-select-dropdown');
+        if (partyElem) partyElem.focus();
+        return;
+      }
+
       const activeElem = document.activeElement;
       const isInsideBulk = activeElem && (
         activeElem.id === 'bulk-nos-input' ||
@@ -841,7 +854,6 @@ export default function VoucherSaleF2() {
           else if (e.key === 'F10') setBulk((b) => ({ ...b, type: 'Crossing without Jode-F10' }));
           else if (e.key === 'F11') setBulk((b) => ({ ...b, type: 'Palat-F11' }));
           else if (e.key === 'F12') setBulk((b) => ({ ...b, type: 'Ander/Bahar Akhar (eq. 1579)-F12' }));
-
           return;
         }
       }
@@ -867,476 +879,477 @@ export default function VoucherSaleF2() {
     const matchesUid = uidText ? String(p.uid || '').includes(uidText) : true;
     return matchesFilter && matchesUid;
   });
-return (
-  <div style={{ padding: '4px', background: '#d4d0c8', height: 'calc(100vh - 45px)', fontSize: '11px', fontFamily: 'Tahoma, "MS Sans Serif", Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', color: '#000', userSelect: 'none', overflow: 'hidden' }}>
 
-    {/* 1. Header Control Bar */}
-    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#d4d0c8', padding: '4px 6px', border: '2px groove #fff', marginBottom: '4px', flexShrink: 0 }}>
-      <div>
-        <span style={{ fontSize: '11px', fontWeight: 'bold' }}>Date (F2): </span>
-        <input
-          id="f2-date"
-          type="text"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          onKeyDown={(e) => handleTopControlKeyDown(e, 'f2-game')}
-          style={{ width: '80px', fontSize: '11px', fontWeight: 'bold', border: '2px inset #fff', padding: '2px', outline: 'none' }}
-        />
-      </div>
+  return (
+    <div style={{ padding: '4px', background: '#d4d0c8', height: 'calc(100vh - 45px)', fontSize: '11px', fontFamily: 'Tahoma, "MS Sans Serif", Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', color: '#000', userSelect: 'none', overflow: 'hidden' }}>
 
-      <div>
-        <span style={{ fontSize: '11px', fontWeight: 'bold' }}>Game: </span>
-        <select
-          id="f2-game"
-          value={selectedGame}
-          onChange={(e) => setSelectedGame(e.target.value)}
-          onKeyDown={(e) => handleTopControlKeyDown(e, 'party-select-dropdown')}
-          style={{ fontSize: '11px', fontWeight: 'bold', border: '2px inset #fff', padding: '1px', width: '60px', outline: 'none' }}
-        >
-          {availableGames.map((gName, idx) => (
-            <option key={idx} value={gName}>{gName}</option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <span style={{ fontSize: '11px', fontWeight: 'bold' }}>Party : (Ctrl + P) </span>
-        <select
-          id="party-select-dropdown"
-          value={selectedParty}
-          disabled={!!selectedVoucherId}
-          onChange={(e) => handlePartySelectChange(e.target.value)}
-          onKeyDown={(e) => handleTopControlKeyDown(e, 'f2-dpcomm')}
-          style={{ width: '180px', fontSize: '11px', fontWeight: 'bold', border: '2px inset #fff', padding: '1px', background: selectedVoucherId ? '#f0f0f0' : '#fff', outline: 'none' }}
-        >
-          {masterParties.map((p) => (
-            <option key={p.pno || p.id} value={p.party_name}>{p.party_name}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* EDITABLE BLUE RATES HEADER BOX (3D Border) */}
-      <div style={{ border: '2px inset #fff', background: selectedVoucherId ? '#f0f0f0' : '#fff', display: 'flex', alignItems: 'center' }}>
-        <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
-          <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '2px 4px', fontWeight: 'bold' }}>D_PComm</div>
-          <input id="f2-dpcomm" type="text" readOnly={!!selectedVoucherId} value={dPcomm} onChange={(e) => handleDPcommChange(e.target.value)} onKeyDown={(e) => handleTopControlKeyDown(e, 'f2-damt')} style={{ width: '40px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', background: selectedVoucherId ? '#f0f0f0' : '#fff', outline: 'none' }} />
+      {/* 1. Header Control Bar */}
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#d4d0c8', padding: '4px 6px', border: '2px groove #fff', marginBottom: '4px', flexShrink: 0 }}>
+        <div>
+          <span style={{ fontSize: '11px', fontWeight: 'bold' }}>Date (F2): </span>
+          <input
+            id="f2-date"
+            type="text"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            onKeyDown={(e) => handleTopControlKeyDown(e, 'f2-game')}
+            style={{ width: '80px', fontSize: '11px', fontWeight: 'bold', border: '2px inset #fff', padding: '2px', outline: 'none' }}
+          />
         </div>
 
-        <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
-          <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '2px 4px', fontWeight: 'bold' }}>D_Amt</div>
-          <input id="f2-damt" type="text" readOnly={!!selectedVoucherId} value={dAmt} onChange={(e) => setDAmt(e.target.value)} onKeyDown={(e) => handleTopControlKeyDown(e, 'f2-apcomm')} style={{ width: '45px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', background: '#f0f0f0', outline: 'none' }} />
+        <div>
+          <span style={{ fontSize: '11px', fontWeight: 'bold' }}>Game: </span>
+          <select
+            id="f2-game"
+            value={selectedGame}
+            onChange={(e) => setSelectedGame(e.target.value)}
+            onKeyDown={(e) => handleTopControlKeyDown(e, 'party-select-dropdown')}
+            style={{ fontSize: '11px', fontWeight: 'bold', border: '2px inset #fff', padding: '1px', width: '60px', outline: 'none' }}
+          >
+            {availableGames.map((gName, idx) => (
+              <option key={idx} value={gName}>{gName}</option>
+            ))}
+          </select>
         </div>
 
-        <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
-          <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '2px 4px', fontWeight: 'bold' }}>A_PComm</div>
-          <input id="f2-apcomm" type="text" readOnly={!!selectedVoucherId} value={aPcomm} onChange={(e) => handleAPcommChange(e.target.value)} onKeyDown={(e) => handleTopControlKeyDown(e, 'f2-aamt')} style={{ width: '40px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', background: selectedVoucherId ? '#f0f0f0' : '#fff', outline: 'none' }} />
+        <div>
+          <span style={{ fontSize: '11px', fontWeight: 'bold' }}>Party : (Ctrl + P) </span>
+          <select
+            id="party-select-dropdown"
+            value={selectedParty}
+            disabled={!!selectedVoucherId}
+            onChange={(e) => handlePartySelectChange(e.target.value)}
+            onKeyDown={(e) => handleTopControlKeyDown(e, 'f2-dpcomm')}
+            style={{ width: '180px', fontSize: '11px', fontWeight: 'bold', border: '2px inset #fff', padding: '1px', background: selectedVoucherId ? '#f0f0f0' : '#fff', outline: 'none' }}
+          >
+            {masterParties.map((p) => (
+              <option key={p.pno || p.id} value={p.party_name}>{p.party_name}</option>
+            ))}
+          </select>
         </div>
 
-        <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
-          <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '2px 4px', fontWeight: 'bold' }}>A_Amt</div>
-          <input id="f2-aamt" type="text" readOnly={!!selectedVoucherId} value={aAmt} onChange={(e) => setAAmt(e.target.value)} onKeyDown={(e) => handleTopControlKeyDown(e, 'f2-patti')} style={{ width: '45px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', background: '#f0f0f0', outline: 'none' }} />
+        {/* EDITABLE BLUE RATES HEADER BOX (3D Border) */}
+        <div style={{ border: '2px inset #fff', background: selectedVoucherId ? '#f0f0f0' : '#fff', display: 'flex', alignItems: 'center' }}>
+          <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
+            <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '2px 4px', fontWeight: 'bold' }}>D_PComm</div>
+            <input id="f2-dpcomm" type="text" readOnly={!!selectedVoucherId} value={dPcomm} onChange={(e) => handleDPcommChange(e.target.value)} onKeyDown={(e) => handleTopControlKeyDown(e, 'f2-damt')} style={{ width: '40px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', background: selectedVoucherId ? '#f0f0f0' : '#fff', outline: 'none' }} />
+          </div>
+
+          <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
+            <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '2px 4px', fontWeight: 'bold' }}>D_Amt</div>
+            <input id="f2-damt" type="text" readOnly={!!selectedVoucherId} value={dAmt} onChange={(e) => setDAmt(e.target.value)} onKeyDown={(e) => handleTopControlKeyDown(e, 'f2-apcomm')} style={{ width: '45px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', background: '#f0f0f0', outline: 'none' }} />
+          </div>
+
+          <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
+            <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '2px 4px', fontWeight: 'bold' }}>A_PComm</div>
+            <input id="f2-apcomm" type="text" readOnly={!!selectedVoucherId} value={aPcomm} onChange={(e) => handleAPcommChange(e.target.value)} onKeyDown={(e) => handleTopControlKeyDown(e, 'f2-aamt')} style={{ width: '40px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', background: selectedVoucherId ? '#f0f0f0' : '#fff', outline: 'none' }} />
+          </div>
+
+          <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
+            <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '2px 4px', fontWeight: 'bold' }}>A_Amt</div>
+            <input id="f2-aamt" type="text" readOnly={!!selectedVoucherId} value={aAmt} onChange={(e) => setAAmt(e.target.value)} onKeyDown={(e) => handleTopControlKeyDown(e, 'f2-patti')} style={{ width: '45px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', background: '#f0f0f0', outline: 'none' }} />
+          </div>
+
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '2px 4px', fontWeight: 'bold' }}>Patti_Perc</div>
+            <input id="f2-patti" type="text" readOnly={!!selectedVoucherId} value={pattiPerc} onChange={(e) => setPattiPerc(e.target.value)} onKeyDown={(e) => handleTopControlKeyDown(e, 'no-input-0')} style={{ width: '35px', textAlign: 'center', border: 'none', fontSize: '12px', fontWeight: 'bold', background: selectedVoucherId ? '#f0f0f0' : '#fff', outline: 'none' }} />
+          </div>
         </div>
 
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '2px 4px', fontWeight: 'bold' }}>Patti_Perc</div>
-          <input id="f2-patti" type="text" readOnly={!!selectedVoucherId} value={pattiPerc} onChange={(e) => setPattiPerc(e.target.value)} onKeyDown={(e) => handleTopControlKeyDown(e, 'no-input-0')} style={{ width: '35px', textAlign: 'center', border: 'none', fontSize: '12px', fontWeight: 'bold', background: selectedVoucherId ? '#f0f0f0' : '#fff', outline: 'none' }} />
-        </div>
-      </div>
-
-      {/* HISSA BOX */}
-      <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px', alignItems: 'center', fontSize: '11px', padding: '2px', border: '2px groove #fff', background: '#d4d0c8' }}>
-        <span style={{ fontWeight: 'bold' }}>Hissa Party:</span>
-        <select value={hissaParty} onChange={(e) => setHissaParty(e.target.value)} style={{ width: '90px', fontSize: '11px', border: '2px inset #fff', outline: 'none' }}>
-          <option value="">-- Choose --</option>
-          {masterParties.map((p) => (<option key={p.pno || p.id} value={p.party_name}>{p.party_name}</option>))}
-        </select>
-        <span style={{ fontWeight: 'bold' }}>%</span>
-        <input type="text" value={hissaPerc} onChange={(e) => setHissaPerc(e.target.value)} style={{ width: '30px', fontSize: '11px', border: '2px inset #fff', outline: 'none' }} />
-      </div>
-    </div>
-
-    {/* 2. Main Workspace Layout */}
-    <div style={{ display: 'flex', gap: '4px', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-
-      {/* Left PageDown Table (Copy Msg Removed & Fix Height) */}
-      <div style={{ width: '180px', background: '#8098b8', border: '2px inset #fff', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', minHeight: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 4px', marginBottom: '2px', flexShrink: 0 }}>
-          <span style={{ fontWeight: 'bold', fontSize: '11px', color: '#fff' }}>(PageDown)</span>
-          <button onClick={handleClearRows} style={{ fontSize: '10px', padding: '2px 8px', cursor: 'pointer', background: '#d4d0c8', border: '2px outset #fff', fontWeight: 'bold' }}>Clear</button>
-        </div>
-
-        {/* Scrollable grid area */}
-        <div style={{ flex: 1, background: '#fff', border: '2px inset #fff', overflowY: 'auto', minHeight: 0 }}>
-          <table border="1" cellPadding="0" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'center', borderColor: '#ccc' }}>
-            <thead>
-              <tr style={{ background: '#d4d0c8', height: '20px', position: 'sticky', top: 0, zIndex: 1 }}>
-                <th style={{ width: '45%', borderRight: '1px solid #aaa' }}>No</th>
-                <th style={{ width: '55%' }}>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {manualRows.map((row, idx) => {
-                const noVal = String(row.no || '').trim();
-                const amtVal = String(row.amount || '').trim();
-                const isNoInvalid = noVal !== '' && !isValidBetNumber(noVal);
-                const isIncomplete = (noVal !== '' && amtVal === '') || (noVal === '' && amtVal !== '');
-
-                return (
-                  <tr key={idx} style={{ height: '18px' }}>
-                    <td style={{ border: '1px solid #ccc', padding: '0' }}>
-                      <input
-                        id={'no-input-' + idx}
-                        type="text"
-                        value={row.no}
-                        onFocus={() => setFocusedCell({ index: idx, field: 'no' })}
-                        onBlur={() => setFocusedCell({ index: null, field: null })}
-                        onChange={(e) => handleRowChange(idx, 'no', e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, idx, 'no')}
-                        style={{ width: '100%', height: '16px', textAlign: 'center', fontSize: '12px', outline: 'none', border: isNoInvalid || (isIncomplete && noVal === '') ? '2px solid red' : 'none', background: isNoInvalid ? '#ffcccc' : focusedCell.index === idx && focusedCell.field === 'no' ? '#000080' : 'transparent', color: isNoInvalid ? '#cc0000' : (focusedCell.index === idx && focusedCell.field === 'no' ? '#ffffff' : '#000'), fontWeight: 'bold' }}
-                      />
-                    </td>
-                    <td style={{ border: '1px solid #ccc', padding: '0' }}>
-                      <input
-                        id={'amt-input-' + idx}
-                        type="text"
-                        value={row.amount}
-                        onFocus={() => setFocusedCell({ index: idx, field: 'amount' })}
-                        onBlur={() => setFocusedCell({ index: null, field: null })}
-                        onChange={(e) => handleRowChange(idx, 'amount', e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, idx, 'amount')}
-                        style={{ width: '100%', height: '16px', textAlign: 'center', fontSize: '12px', outline: 'none', border: isIncomplete && amtVal === '' ? '2px solid red' : 'none', background: isIncomplete && amtVal === '' ? '#ffcccc' : focusedCell.index === idx && focusedCell.field === 'amount' ? '#000080' : 'transparent', color: focusedCell.index === idx && focusedCell.field === 'amount' ? '#ffffff' : '#0000aa', fontWeight: 'bold' }}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <div style={{ background: '#d4d0c8', border: '2px groove #fff', padding: '3px 4px', marginTop: '2px', textAlign: 'right', fontWeight: 'bold', fontSize: '12px', flexShrink: 0 }}>
-          SubTotal: {msgSubTotal}
+        {/* HISSA BOX */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px', alignItems: 'center', fontSize: '11px', padding: '2px', border: '2px groove #fff', background: '#d4d0c8' }}>
+          <span style={{ fontWeight: 'bold' }}>Hissa Party:</span>
+          <select value={hissaParty} onChange={(e) => setHissaParty(e.target.value)} style={{ width: '90px', fontSize: '11px', border: '2px inset #fff', outline: 'none' }}>
+            <option value="">-- Choose --</option>
+            {masterParties.map((p) => (<option key={p.pno || p.id} value={p.party_name}>{p.party_name}</option>))}
+          </select>
+          <span style={{ fontWeight: 'bold' }}>%</span>
+          <input type="text" value={hissaPerc} onChange={(e) => setHissaPerc(e.target.value)} style={{ width: '30px', fontSize: '11px', border: '2px inset #fff', outline: 'none' }} />
         </div>
       </div>
 
-      {/* Center Entry Panels (Pinkish Background & 3D Groove Borders) */}
-      <div style={{ flex: 1, border: '2px inset #fff', padding: '6px', background: '#fce8e8', display: 'flex', flexDirection: 'column', gap: '6px', boxSizing: 'border-box', overflowY: 'auto', minHeight: 0 }}>
+      {/* 2. Main Workspace Layout */}
+      <div style={{ display: 'flex', gap: '4px', flex: 1, minHeight: 0, overflow: 'hidden' }}>
 
-        {/* Laddi & Pehada Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '6px', flexShrink: 0 }}>
-          <div style={{ border: '2px groove #e0c0c0', background: '#fdf3f3', padding: '6px' }}>
-            <strong style={{ fontSize: '11px', color: '#000' }}>Laddi (Ctrl+L)</strong>
-            <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-              <span>No From: </span>
-              <input id="laddi-from-input" type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={laddi.from} onChange={(e) => setLaddi({ ...laddi, from: e.target.value })} onKeyDown={(e) => handleTopControlKeyDown(e, 'laddi-to-input')} />
-              <span>No To: </span>
-              <input id="laddi-to-input" type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={laddi.to} onChange={(e) => setLaddi({ ...laddi, to: e.target.value })} onKeyDown={(e) => handleTopControlKeyDown(e, 'laddi-amt-input')} />
-            </div>
-            <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-              <span>Amount: </span>
-              <input id="laddi-amt-input" type="text" style={{ width: '70px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={laddi.amount} onChange={(e) => setLaddi({ ...laddi, amount: e.target.value })} onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleLaddiSubmit(); } }} />
-            </div>
+        {/* Left PageDown Table */}
+        <div style={{ width: '180px', background: '#8098b8', border: '2px inset #fff', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', minHeight: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 4px', marginBottom: '2px', flexShrink: 0 }}>
+            <span style={{ fontWeight: 'bold', fontSize: '11px', color: '#fff' }}>(PageDown)</span>
+            <button onClick={handleClearRows} style={{ fontSize: '10px', padding: '2px 8px', cursor: 'pointer', background: '#d4d0c8', border: '2px outset #fff', fontWeight: 'bold' }}>Clear</button>
           </div>
 
-          <div style={{ border: '2px groove #e0c0c0', background: '#fdf3f3', padding: '6px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <strong style={{ fontSize: '11px', color: '#000' }}>Pehada</strong>
-              <label style={{ fontSize: '11px' }}><input type="checkbox" checked={pehada.add3} onChange={(e) => setPehada({ ...pehada, add3: e.target.checked })} /> Add 3</label>
-            </div>
-            <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-              <span>Pehada: </span>
-              <input type="text" style={{ width: '60px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={pehada.text} onChange={(e) => setPehada({ ...pehada, text: e.target.value })} onKeyDown={(e) => handleTopControlKeyDown(e, 'pehada-amt-input')} />
-            </div>
-            <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-              <span>Amt: </span>
-              <input id="pehada-amt-input" type="text" style={{ width: '60px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={pehada.amt} onChange={(e) => setPehada({ ...pehada, amt: e.target.value })} onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handlePehadaSubmit(); } }} />
-            </div>
-          </div>
-        </div>
+          {/* Scrollable grid area */}
+          <div style={{ flex: 1, background: '#fff', border: '2px inset #fff', overflowY: 'auto', minHeight: 0 }}>
+            <table border="1" cellPadding="0" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'center', borderColor: '#ccc' }}>
+              <thead>
+                <tr style={{ background: '#d4d0c8', height: '20px', position: 'sticky', top: 0, zIndex: 1 }}>
+                  <th style={{ width: '45%', borderRight: '1px solid #aaa' }}>No</th>
+                  <th style={{ width: '55%' }}>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {manualRows.map((row, idx) => {
+                  const noVal = String(row.no || '').trim();
+                  const amtVal = String(row.amount || '').trim();
+                  const isNoInvalid = noVal !== '' && !isValidBetNumber(noVal);
+                  const isIncomplete = (noVal !== '' && amtVal === '') || (noVal === '' && amtVal !== '');
 
-        {/* Haruf, Equal Amount, Jode Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '6px', flexShrink: 0 }}>
-          <div style={{ border: '2px groove #e0c0c0', background: '#fdf3f3', padding: '6px' }}>
-            <strong style={{ fontSize: '11px', color: '#000' }}>Haruf (Ctrl+H)</strong>
-            <div style={{ marginTop: '2px', display: 'flex', gap: '8px' }}>
-              <label><input type="radio" name="hrf" checked={haruf.type === 'Bahar'} onChange={() => setHaruf({ ...haruf, type: 'Bahar' })} /> Bahar</label>
-              <label><input type="radio" name="hrf" checked={haruf.type === 'Ander'} onChange={() => setHaruf({ ...haruf, type: 'Ander' })} /> Ander</label>
-            </div>
-            <div style={{ marginTop: '2px', display: 'flex', gap: '4px', alignItems: 'center' }}>
-              <span>No: </span>
-              <input id="haruf-no-input" type="text" style={{ width: '50px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={haruf.no} onChange={(e) => setHaruf({ ...haruf, no: e.target.value })} onKeyDown={(e) => handleTopControlKeyDown(e, 'haruf-amt-input')} />
-            </div>
-            <div style={{ marginTop: '2px', display: 'flex', gap: '4px', alignItems: 'center' }}>
-              <span>Amount: </span>
-              <input id="haruf-amt-input" type="text" style={{ width: '50px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={haruf.amount} onChange={(e) => setHaruf({ ...haruf, amount: e.target.value })} onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleHarufSubmit(); } }} />
-            </div>
+                  return (
+                    <tr key={idx} style={{ height: '18px' }}>
+                      <td style={{ border: '1px solid #ccc', padding: '0' }}>
+                        <input
+                          id={'no-input-' + idx}
+                          type="text"
+                          value={row.no}
+                          onFocus={() => setFocusedCell({ index: idx, field: 'no' })}
+                          onBlur={() => setFocusedCell({ index: null, field: null })}
+                          onChange={(e) => handleRowChange(idx, 'no', e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, idx, 'no')}
+                          style={{ width: '100%', height: '16px', textAlign: 'center', fontSize: '12px', outline: 'none', border: isNoInvalid || (isIncomplete && noVal === '') ? '2px solid red' : 'none', background: isNoInvalid ? '#ffcccc' : focusedCell.index === idx && focusedCell.field === 'no' ? '#000080' : 'transparent', color: isNoInvalid ? '#cc0000' : (focusedCell.index === idx && focusedCell.field === 'no' ? '#ffffff' : '#000'), fontWeight: 'bold' }}
+                        />
+                      </td>
+                      <td style={{ border: '1px solid #ccc', padding: '0' }}>
+                        <input
+                          id={'amt-input-' + idx}
+                          type="text"
+                          value={row.amount}
+                          onFocus={() => setFocusedCell({ index: idx, field: 'amount' })}
+                          onBlur={() => setFocusedCell({ index: null, field: null })}
+                          onChange={(e) => handleRowChange(idx, 'amount', e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, idx, 'amount')}
+                          style={{ width: '100%', height: '16px', textAlign: 'center', fontSize: '12px', outline: 'none', border: isIncomplete && amtVal === '' ? '2px solid red' : 'none', background: isIncomplete && amtVal === '' ? '#ffcccc' : focusedCell.index === idx && focusedCell.field === 'amount' ? '#000080' : 'transparent', color: focusedCell.index === idx && focusedCell.field === 'amount' ? '#ffffff' : '#0000aa', fontWeight: 'bold' }}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
-          <div style={{ border: '2px groove #e0c0c0', background: '#fdf3f3', padding: '6px' }}>
-            <strong style={{ fontSize: '11px', color: '#000' }}>Equal Amount (Ctrl+E)</strong>
-            <div style={{ marginTop: '4px', display: 'flex', gap: '4px', alignItems: 'center' }}>
-              <span>Amt: </span>
-              <input id="equal-amt-input" type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={equalAmt.amt} onChange={(e) => setEqualAmt({ ...equalAmt, amt: e.target.value })} onKeyDown={(e) => handleTopControlKeyDown(e, 'equal-no-input')} />
-            </div>
-            <div style={{ marginTop: '4px', display: 'flex', gap: '4px', alignItems: 'center' }}>
-              <span>No: </span>
-              <input id="equal-no-input" type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={equalAmt.no} onChange={(e) => setEqualAmt({ ...equalAmt, no: e.target.value })} onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleEqualAmtSubmit(); } }} />
-            </div>
-          </div>
-
-          <div style={{ border: '2px groove #e0c0c0', background: '#fdf3f3', padding: '6px' }}>
-            <strong style={{ fontSize: '11px', color: '#000' }}>Jode</strong>
-            <div style={{ marginTop: '4px', display: 'flex', gap: '4px', alignItems: 'center' }}>
-              <span>Amt: </span>
-              <input type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={jode.amt} onChange={(e) => setJode({ ...jode, amt: e.target.value })} onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleJodeSubmit(); } }} />
-            </div>
-            <div style={{ marginTop: '6px' }}>
-              <label style={{ fontSize: '11px' }}><input type="checkbox" checked={jode.include00} onChange={(e) => setJode({ ...jode, include00: e.target.checked })} /> Include 00</label>
-            </div>
+          <div style={{ background: '#d4d0c8', border: '2px groove #fff', padding: '3px 4px', marginTop: '2px', textAlign: 'right', fontWeight: 'bold', fontSize: '12px', flexShrink: 0 }}>
+            SubTotal: {msgSubTotal}
           </div>
         </div>
 
-        {/* BULK Text Area Box (फिक्स हाइट ताकि नीचे वाले बटन बाहर ना निकलें) */}
-        <div style={{ border: '2px groove #e0c0c0', padding: '6px', background: '#fdf3f3', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', height: '110px', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <strong style={{ fontSize: '11px' }}>BULK (Ctrl+B)</strong>
-            <span style={{ color: '#800000', fontWeight: 'bold' }}>Type</span>
-            <select value={bulk.type} onChange={(e) => setBulk({ ...bulk, type: e.target.value })} style={{ fontSize: '11px', border: '2px inset #fff', outline: 'none', flex: 1 }}>
-              <option value="Bulk (F6)">Bulk (F6)</option>
-              <option value="Ander Akhar (eq. 1579)-F7">Ander Akhar (eq. 1579)-F7</option>
-              <option value="Bahar Akhar (eq. 1579)-F8">Bahar Akhar (eq. 1579)-F8</option>
-              <option value="Crossing with Jode-F9">Crossing with Jode-F9</option>
-              <option value="Crossing without Jode-F10">Crossing without Jode-F10</option>
-              <option value="Palat-F11">Palat-F11</option>
-              <option value="Ander/Bahar Akhar (eq. 1579)-F12">Ander/Bahar Akhar (eq. 1579)-F12</option>
-            </select>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', flex: 1 }}>
-            <span style={{ color: '#800000', fontWeight: 'bold', paddingTop: '2px' }}>No's</span>
-            <textarea
-              id="bulk-nos-input"
-              style={{ flex: 1, resize: 'none', fontSize: '12px', fontFamily: 'monospace', border: '2px inset #fff', padding: '2px', boxSizing: 'border-box', outline: 'none', height: '100%' }}
-              value={bulk.nos}
-              onChange={(e) => handleBulkNosChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; }
-                if (e.key === 'Backspace' && bulk.type === 'Bulk (F6)') {
-                  if (bulk.nos.endsWith('-')) { e.preventDefault(); setBulk({ ...bulk, nos: bulk.nos.slice(0, -2) }); return; }
-                }
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('bulk-amt-input')?.focus(); }
-              }}
-            ></textarea>
-          </div>
+        {/* Center Entry Panels */}
+        <div style={{ flex: 1, border: '2px inset #fff', padding: '6px', background: '#fce8e8', display: 'flex', flexDirection: 'column', gap: '6px', boxSizing: 'border-box', overflowY: 'auto', minHeight: 0 }}>
 
-          <div style={{ textAlign: 'right', marginTop: '4px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px' }}>
-            <span style={{ color: '#800000', fontWeight: 'bold' }}>Amt : </span>
-            <input
-              id="bulk-amt-input"
-              type="text"
-              value={bulk.amt || ''}
-              onChange={(e) => setBulk({ ...bulk, amt: e.target.value })}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; }
-                if (e.key === 'Enter') { e.preventDefault(); if (bulk.type === 'Palat-F11') document.getElementById('bulk-palat-amt-input')?.focus(); else handleBulkSubmit(); }
-              }}
-              style={{ width: '60px', height: '18px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }}
-            />
-
-            {bulk.type === 'Palat-F11' && (
-              <React.Fragment>
-                <span style={{ marginLeft: '4px', color: '#800000', fontWeight: 'bold' }}>Palat Amt : </span>
-                <input
-                  id="bulk-palat-amt-input"
-                  type="text"
-                  value={bulk.palatAmt || ''}
-                  onChange={(e) => setBulk({ ...bulk, palatAmt: e.target.value })}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; }
-                    if (e.key === 'Enter') { e.preventDefault(); handleBulkSubmit(); }
-                  }}
-                  style={{ width: '60px', height: '18px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }}
-                />
-              </React.Fragment>
-            )}
-          </div>
-        </div>
-
-        {/* Bottom Action Bar (3D Windows Buttons - Save/Update/Move/Replace) - अब हमेशा ऊपर और सामने रहेंगे */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', background: 'transparent', marginTop: 'auto', paddingTop: '4px', flexShrink: 0 }}>
-          <div style={{ color: '#800000', fontSize: '11px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <button onClick={handleEditInYantri} style={{ background: '#d4d0c8', color: '#000', border: '2px outset #fff', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', padding: '2px 8px' }}>
-                Edit in Yantri
-              </button>
-              <span style={{ color: '#800000', fontSize: '12px', fontWeight: 'bold' }}>{msgSubTotal}</span>
+          {/* Laddi & Pehada Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '6px', flexShrink: 0 }}>
+            <div style={{ border: '2px groove #e0c0c0', background: '#fdf3f3', padding: '6px' }}>
+              <strong style={{ fontSize: '11px', color: '#000' }}>Laddi (Ctrl+L)</strong>
+              <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <span>No From: </span>
+                <input id="laddi-from-input" type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={laddi.from} onChange={(e) => setLaddi({ ...laddi, from: e.target.value })} onKeyDown={(e) => handleTopControlKeyDown(e, 'laddi-to-input')} />
+                <span>No To: </span>
+                <input id="laddi-to-input" type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={laddi.to} onChange={(e) => setLaddi({ ...laddi, to: e.target.value })} onKeyDown={(e) => handleTopControlKeyDown(e, 'laddi-amt-input')} />
+              </div>
+              <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <span>Amount: </span>
+                <input id="laddi-amt-input" type="text" style={{ width: '70px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={laddi.amount} onChange={(e) => setLaddi({ ...laddi, amount: e.target.value })} onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleLaddiSubmit(); } }} />
+              </div>
             </div>
-            <div style={{ marginTop: '2px', color: '#b08080' }}>111 OR 1B 1- Bahar</div>
-            <div style={{ color: '#b08080' }}>1111 OR 1A 1- Ander</div>
-          </div>
 
-          {formErrorMsg && (
-            <div style={{ color: '#cc0000', fontWeight: 'bold', fontSize: '11px', padding: '2px 6px', background: '#ffe6e6', border: '1px solid #ff9999' }}>
-              {formErrorMsg}
+            <div style={{ border: '2px groove #e0c0c0', background: '#fdf3f3', padding: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <strong style={{ fontSize: '11px', color: '#000' }}>Pehada</strong>
+                <label style={{ fontSize: '11px' }}><input type="checkbox" checked={pehada.add3} onChange={(e) => setPehada({ ...pehada, add3: e.target.checked })} /> Add 3</label>
+              </div>
+              <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <span>Pehada: </span>
+                <input type="text" style={{ width: '60px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={pehada.text} onChange={(e) => setPehada({ ...pehada, text: e.target.value })} onKeyDown={(e) => handleTopControlKeyDown(e, 'pehada-amt-input')} />
+              </div>
+              <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <span>Amt: </span>
+                <input id="pehada-amt-input" type="text" style={{ width: '60px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={pehada.amt} onChange={(e) => setPehada({ ...pehada, amt: e.target.value })} onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handlePehadaSubmit(); } }} />
+              </div>
             </div>
-          )}
-
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {selectedVoucherId ? (
-              <>
-                <button onClick={handleUpdate} style={{ background: '#d4d0c8', border: '2px outset #fff', padding: '4px 12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px', color: '#000' }}>Update 💾</button>
-                <button onClick={handleCopy} style={{ background: '#d4d0c8', border: '2px outset #fff', padding: '4px 12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px', color: '#000' }}>Copy 📄</button>
-                <button onClick={handleOpenMoveModal} style={{ background: '#d4d0c8', border: '2px outset #fff', padding: '4px 12px', fontWeight: 'bold', cursor: 'pointer', color: '#000', fontSize: '12px' }}>Move 🔄</button>
-                <button onClick={handleDelete} style={{ background: '#d4d0c8', border: '2px outset #fff', padding: '4px 12px', cursor: 'pointer', color: '#cc0000', fontSize: '12px', fontWeight: 'bold' }}>🗑️ Delete</button>
-              </>
-            ) : (
-              <button onClick={handleSave} style={{ background: '#d4d0c8', border: '2px outset #fff', padding: '4px 16px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px', color: '#000' }}>Save 💾</button>
-            )}
-
-            <button onClick={handleReplaceEqual} style={{ background: '#d4d0c8', border: '2px outset #fff', cursor: 'pointer', fontSize: '11px', color: '#000', padding: '4px 8px', fontWeight: 'bold' }}>Replace Equal (=)</button>
-            <button onClick={handleRemoveInvalids} style={{ background: '#d4d0c8', border: '2px outset #fff', cursor: 'pointer', fontSize: '11px', color: '#000', padding: '4px 8px', fontWeight: 'bold' }}>Remove</button>
           </div>
-        </div>
 
-      </div>
+          {/* Haruf, Equal Amount, Jode Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '6px', flexShrink: 0 }}>
+            <div style={{ border: '2px groove #e0c0c0', background: '#fdf3f3', padding: '6px' }}>
+              <strong style={{ fontSize: '11px', color: '#000' }}>Haruf (Ctrl+H)</strong>
+              <div style={{ marginTop: '2px', display: 'flex', gap: '8px' }}>
+                <label><input type="radio" name="hrf" checked={haruf.type === 'Bahar'} onChange={() => setHaruf({ ...haruf, type: 'Bahar' })} /> Bahar</label>
+                <label><input type="radio" name="hrf" checked={haruf.type === 'Ander'} onChange={() => setHaruf({ ...haruf, type: 'Ander' })} /> Ander</label>
+              </div>
+              <div style={{ marginTop: '2px', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <span>No: </span>
+                <input id="haruf-no-input" type="text" style={{ width: '50px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={haruf.no} onChange={(e) => setHaruf({ ...haruf, no: e.target.value })} onKeyDown={(e) => handleTopControlKeyDown(e, 'haruf-amt-input')} />
+              </div>
+              <div style={{ marginTop: '2px', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <span>Amount: </span>
+                <input id="haruf-amt-input" type="text" style={{ width: '50px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={haruf.amount} onChange={(e) => setHaruf({ ...haruf, amount: e.target.value })} onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleHarufSubmit(); } }} />
+              </div>
+            </div>
 
-      {/* Right Saved Vouchers Table */}
-      <div style={{ width: '480px', background: '#8098b8', border: '2px inset #fff', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', minHeight: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', padding: '4px', fontSize: '11px', background: '#d4d0c8', borderBottom: '2px groove #fff', flexShrink: 0 }}>
-          <div>
-            <span style={{ fontWeight: 'bold' }}>Filter (Alt + F) </span>
-            <input type="text" value={filterText} onChange={(e) => setFilterText(e.target.value)} style={{ width: '120px', fontSize: '11px', border: '2px inset #fff', background: '#fff', outline: 'none' }} />
+            <div style={{ border: '2px groove #e0c0c0', background: '#fdf3f3', padding: '6px' }}>
+              <strong style={{ fontSize: '11px', color: '#000' }}>Equal Amount (Ctrl+E)</strong>
+              <div style={{ marginTop: '4px', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <span>Amt: </span>
+                <input id="equal-amt-input" type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={equalAmt.amt} onChange={(e) => setEqualAmt({ ...equalAmt, amt: e.target.value })} onKeyDown={(e) => handleTopControlKeyDown(e, 'equal-no-input')} />
+              </div>
+              <div style={{ marginTop: '4px', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <span>No: </span>
+                <input id="equal-no-input" type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={equalAmt.no} onChange={(e) => setEqualAmt({ ...equalAmt, no: e.target.value })} onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleEqualAmtSubmit(); } }} />
+              </div>
+            </div>
+
+            <div style={{ border: '2px groove #e0c0c0', background: '#fdf3f3', padding: '6px' }}>
+              <strong style={{ fontSize: '11px', color: '#000' }}>Jode</strong>
+              <div style={{ marginTop: '4px', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <span>Amt: </span>
+                <input type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={jode.amt} onChange={(e) => setJode({ ...jode, amt: e.target.value })} onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleJodeSubmit(); } }} />
+              </div>
+              <div style={{ marginTop: '6px' }}>
+                <label style={{ fontSize: '11px' }}><input type="checkbox" checked={jode.include00} onChange={(e) => setJode({ ...jode, include00: e.target.checked })} /> Include 00</label>
+              </div>
+            </div>
           </div>
-          <div>
-            <span style={{ fontWeight: 'bold' }}>UID </span>
-            <input type="text" value={uidText} onChange={(e) => setUidText(e.target.value)} style={{ width: '50px', fontSize: '11px', border: '2px inset #fff', background: '#fff', outline: 'none' }} />
-          </div>
-        </div>
 
-        <div style={{ flex: 1, background: '#fff', border: '2px inset #fff', overflowX: 'auto', overflowY: 'auto', minHeight: 0 }}>
-          <table border="1" cellPadding="2" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px', minWidth: '450px', borderColor: '#ccc' }}>
-            <thead>
-              <tr style={{ background: '#d4d0c8', position: 'sticky', top: 0, zIndex: 1, textAlign: 'center' }}>
-                <th style={{ width: '35px', fontWeight: 'bold', border: '1px outset #fff' }}>SrNo</th>
-                <th style={{ fontWeight: 'bold', textAlign: 'left', paddingLeft: '4px', border: '1px outset #fff' }}>Name</th>
-                <th style={{ width: '85px', fontWeight: 'bold', border: '1px outset #fff' }}>Rate</th>
-                <th style={{ width: '35px', fontWeight: 'bold', border: '1px outset #fff' }}>UID</th>
-                <th style={{ fontWeight: 'bold', border: '1px outset #fff' }}>EntryDateTime</th>
-                <th style={{ width: '50px', fontWeight: 'bold', border: '1px outset #fff' }}>Hissa %</th>
-                <th style={{ width: '60px', fontWeight: 'bold', textAlign: 'right', paddingRight: '4px', border: '1px outset #fff' }}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredVouchers.map((item, idx) => {
-                const isSelected = selectedVoucherId === item.sale_id;
-                const rateStr = (item.d_comm || 10) + '/' + (item.d_amt || 90) + '-' + (item.a_comm || 10) + '/' + (item.a_amt || 9);
-                const displayPatti = (item.patti_perc !== undefined && item.patti_perc !== null) ? item.patti_perc : (item.third_party_hissa || '0');
-                
-                return (
-                  <tr
-                    key={item.sale_id || idx}
-                    onClick={() => handleSelectVoucherRow(item)}
-                    style={{
-                      background: isSelected ? '#000080' : '#ffffff',
-                      color: isSelected ? '#ffffff' : '#000000',
-                      cursor: 'pointer',
-                      height: '18px'
+          {/* BULK Text Area Box */}
+          <div style={{ border: '2px groove #e0c0c0', padding: '6px', background: '#fdf3f3', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', height: '110px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <strong style={{ fontSize: '11px' }}>BULK (Ctrl+B)</strong>
+              <span style={{ color: '#800000', fontWeight: 'bold' }}>Type</span>
+              <select value={bulk.type} onChange={(e) => setBulk({ ...bulk, type: e.target.value })} style={{ fontSize: '11px', border: '2px inset #fff', outline: 'none', flex: 1 }}>
+                <option value="Bulk (F6)">Bulk (F6)</option>
+                <option value="Ander Akhar (eq. 1579)-F7">Ander Akhar (eq. 1579)-F7</option>
+                <option value="Bahar Akhar (eq. 1579)-F8">Bahar Akhar (eq. 1579)-F8</option>
+                <option value="Crossing with Jode-F9">Crossing with Jode-F9</option>
+                <option value="Crossing without Jode-F10">Crossing without Jode-F10</option>
+                <option value="Palat-F11">Palat-F11</option>
+                <option value="Ander/Bahar Akhar (eq. 1579)-F12">Ander/Bahar Akhar (eq. 1579)-F12</option>
+              </select>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', flex: 1 }}>
+              <span style={{ color: '#800000', fontWeight: 'bold', paddingTop: '2px' }}>No's</span>
+              <textarea
+                id="bulk-nos-input"
+                style={{ flex: 1, resize: 'none', fontSize: '12px', fontFamily: 'monospace', border: '2px inset #fff', padding: '2px', boxSizing: 'border-box', outline: 'none', height: '100%' }}
+                value={bulk.nos}
+                onChange={(e) => handleBulkNosChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; }
+                  if (e.key === 'Backspace' && bulk.type === 'Bulk (F6)') {
+                    if (bulk.nos.endsWith('-')) { e.preventDefault(); setBulk({ ...bulk, nos: bulk.nos.slice(0, -2) }); return; }
+                  }
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('bulk-amt-input')?.focus(); }
+                }}
+              ></textarea>
+            </div>
+
+            <div style={{ textAlign: 'right', marginTop: '4px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px' }}>
+              <span style={{ color: '#800000', fontWeight: 'bold' }}>Amt : </span>
+              <input
+                id="bulk-amt-input"
+                type="text"
+                value={bulk.amt || ''}
+                onChange={(e) => setBulk({ ...bulk, amt: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; }
+                  if (e.key === 'Enter') { e.preventDefault(); if (bulk.type === 'Palat-F11') document.getElementById('bulk-palat-amt-input')?.focus(); else handleBulkSubmit(); }
+                }}
+                style={{ width: '60px', height: '18px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }}
+              />
+
+              {bulk.type === 'Palat-F11' && (
+                <React.Fragment>
+                  <span style={{ marginLeft: '4px', color: '#800000', fontWeight: 'bold' }}>Palat Amt : </span>
+                  <input
+                    id="bulk-palat-amt-input"
+                    type="text"
+                    value={bulk.palatAmt || ''}
+                    onChange={(e) => setBulk({ ...bulk, palatAmt: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; }
+                      if (e.key === 'Enter') { e.preventDefault(); handleBulkSubmit(); }
                     }}
-                  >
-                    <td style={{ textAlign: 'center', border: '1px solid #eee' }}>{idx + 1}</td>
-                    <td style={{ paddingLeft: '4px', border: '1px solid #eee' }}>{item.party_name || selectedParty}</td>
-                    <td style={{ textAlign: 'center', fontSize: '10px', border: '1px solid #eee' }}>{rateStr}</td>
-                    <td style={{ textAlign: 'center', border: '1px solid #eee' }}>{item.uid || '1'}</td>
-                    <td style={{ textAlign: 'center', fontSize: '10px', border: '1px solid #eee' }}>{item.entry_date_time || '-'}</td>
-                    <td style={{ textAlign: 'center', border: '1px solid #eee' }}>{displayPatti + '%'}</td>
-                    <td style={{ textAlign: 'right', paddingRight: '4px', border: '1px solid #eee' }}>{item.party_total || 0}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    style={{ width: '60px', height: '18px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }}
+                  />
+                </React.Fragment>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom Action Bar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', background: 'transparent', marginTop: 'auto', paddingTop: '4px', flexShrink: 0 }}>
+            <div style={{ color: '#800000', fontSize: '11px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button onClick={handleEditInYantri} style={{ background: '#d4d0c8', color: '#000', border: '2px outset #fff', cursor: 'pointer', fontWeight: 'bold', fontSize: '11px', padding: '2px 8px' }}>
+                  Edit in Yantri
+                </button>
+                <span style={{ color: '#800000', fontSize: '12px', fontWeight: 'bold' }}>{msgSubTotal}</span>
+              </div>
+              <div style={{ marginTop: '2px', color: '#b08080' }}>111 OR 1B 1- Bahar</div>
+              <div style={{ color: '#b08080' }}>1111 OR 1A 1- Ander</div>
+            </div>
+
+            {formErrorMsg && (
+              <div style={{ color: '#cc0000', fontWeight: 'bold', fontSize: '11px', padding: '2px 6px', background: '#ffe6e6', border: '1px solid #ff9999' }}>
+                {formErrorMsg}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {selectedVoucherId ? (
+                <>
+                  <button onClick={handleUpdate} style={{ background: '#d4d0c8', border: '2px outset #fff', padding: '4px 12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px', color: '#000' }}>Update 💾</button>
+                  <button onClick={handleCopy} style={{ background: '#d4d0c8', border: '2px outset #fff', padding: '4px 12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px', color: '#000' }}>Copy 📄</button>
+                  <button onClick={handleOpenMoveModal} style={{ background: '#d4d0c8', border: '2px outset #fff', padding: '4px 12px', fontWeight: 'bold', cursor: 'pointer', color: '#000', fontSize: '12px' }}>Move 🔄</button>
+                  <button onClick={handleDelete} style={{ background: '#d4d0c8', border: '2px outset #fff', padding: '4px 12px', cursor: 'pointer', color: '#cc0000', fontSize: '12px', fontWeight: 'bold' }}>🗑️ Delete</button>
+                </>
+              ) : (
+                <button onClick={handleSave} style={{ background: '#d4d0c8', border: '2px outset #fff', padding: '4px 16px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px', color: '#000' }}>Save 💾</button>
+              )}
+
+              <button onClick={handleReplaceEqual} style={{ background: '#d4d0c8', border: '2px outset #fff', cursor: 'pointer', fontSize: '11px', color: '#000', padding: '4px 8px', fontWeight: 'bold' }}>Replace Equal (=)</button>
+              <button onClick={handleRemoveInvalids} style={{ background: '#d4d0c8', border: '2px outset #fff', cursor: 'pointer', fontSize: '11px', color: '#000', padding: '4px 8px', fontWeight: 'bold' }}>Remove</button>
+            </div>
+          </div>
+
         </div>
 
-        <div style={{ marginTop: '2px', padding: '4px', textAlign: 'right', fontSize: '12px', background: '#d4d0c8', border: '2px groove #fff', flexShrink: 0 }}>
-          <span style={{ color: '#800000', fontWeight: 'bold' }}>Total Amount : </span>
-          <span style={{ color: '#800000', fontSize: '14px', fontWeight: 'bold' }}>{rightTableOverallTotal}</span>
+        {/* Right Saved Vouchers Table */}
+        <div style={{ width: '480px', background: '#8098b8', border: '2px inset #fff', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', minHeight: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px', padding: '4px', fontSize: '11px', background: '#d4d0c8', borderBottom: '2px groove #fff', flexShrink: 0 }}>
+            <div>
+              <span style={{ fontWeight: 'bold' }}>Filter (Alt + F) </span>
+              <input type="text" value={filterText} onChange={(e) => setFilterText(e.target.value)} style={{ width: '120px', fontSize: '11px', border: '2px inset #fff', background: '#fff', outline: 'none' }} />
+            </div>
+            <div>
+              <span style={{ fontWeight: 'bold' }}>UID </span>
+              <input type="text" value={uidText} onChange={(e) => setUidText(e.target.value)} style={{ width: '50px', fontSize: '11px', border: '2px inset #fff', background: '#fff', outline: 'none' }} />
+            </div>
+          </div>
+
+          <div style={{ flex: 1, background: '#fff', border: '2px inset #fff', overflowX: 'auto', overflowY: 'auto', minHeight: 0 }}>
+            <table border="1" cellPadding="2" cellSpacing="0" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '11px', minWidth: '450px', borderColor: '#ccc' }}>
+              <thead>
+                <tr style={{ background: '#d4d0c8', position: 'sticky', top: 0, zIndex: 1, textAlign: 'center' }}>
+                  <th style={{ width: '35px', fontWeight: 'bold', border: '1px outset #fff' }}>SrNo</th>
+                  <th style={{ fontWeight: 'bold', textAlign: 'left', paddingLeft: '4px', border: '1px outset #fff' }}>Name</th>
+                  <th style={{ width: '85px', fontWeight: 'bold', border: '1px outset #fff' }}>Rate</th>
+                  <th style={{ width: '35px', fontWeight: 'bold', border: '1px outset #fff' }}>UID</th>
+                  <th style={{ fontWeight: 'bold', border: '1px outset #fff' }}>EntryDateTime</th>
+                  <th style={{ width: '50px', fontWeight: 'bold', border: '1px outset #fff' }}>Hissa %</th>
+                  <th style={{ width: '60px', fontWeight: 'bold', textAlign: 'right', paddingRight: '4px', border: '1px outset #fff' }}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredVouchers.map((item, idx) => {
+                  const isSelected = selectedVoucherId === item.sale_id;
+                  const rateStr = (item.d_comm || 10) + '/' + (item.d_amt || 90) + '-' + (item.a_comm || 10) + '/' + (item.a_amt || 9);
+                  const displayPatti = (item.patti_perc !== undefined && item.patti_perc !== null) ? item.patti_perc : (item.third_party_hissa || '0');
+                  
+                  return (
+                    <tr
+                      key={item.sale_id || idx}
+                      onClick={() => handleSelectVoucherRow(item)}
+                      style={{
+                        background: isSelected ? '#000080' : '#ffffff',
+                        color: isSelected ? '#ffffff' : '#000000',
+                        cursor: 'pointer',
+                        height: '18px'
+                      }}
+                    >
+                      <td style={{ textAlign: 'center', border: '1px solid #eee' }}>{idx + 1}</td>
+                      <td style={{ paddingLeft: '4px', border: '1px solid #eee' }}>{item.party_name || selectedParty}</td>
+                      <td style={{ textAlign: 'center', fontSize: '10px', border: '1px solid #eee' }}>{rateStr}</td>
+                      <td style={{ textAlign: 'center', border: '1px solid #eee' }}>{item.uid || '1'}</td>
+                      <td style={{ textAlign: 'center', fontSize: '10px', border: '1px solid #eee' }}>{item.entry_date_time || '-'}</td>
+                      <td style={{ textAlign: 'center', border: '1px solid #eee' }}>{displayPatti + '%'}</td>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', border: '1px solid #eee' }}>{item.party_total || 0}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ marginTop: '2px', padding: '4px', textAlign: 'right', fontSize: '12px', background: '#d4d0c8', border: '2px groove #fff', flexShrink: 0 }}>
+            <span style={{ color: '#800000', fontWeight: 'bold' }}>Total Amount : </span>
+            <span style={{ color: '#800000', fontSize: '14px', fontWeight: 'bold' }}>{rightTableOverallTotal}</span>
+          </div>
         </div>
+
       </div>
+
+      {/* MOVE VOUCHER POPUP MODAL */}
+      {isMoveModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: '#d4d0c8', border: '3px outset #fff', boxShadow: '4px 4px 12px rgba(0,0,0,0.6)', padding: '2px', width: '600px', fontFamily: 'Tahoma, sans-serif' }}>
+            
+            <div style={{ background: '#000080', color: '#fff', padding: '4px 6px', fontSize: '12px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🔄</span>
+                <span>Move Voucher</span>
+              </div>
+              <button onClick={() => setIsMoveModalOpen(false)} style={{ background: '#d4d0c8', color: '#000', border: '2px outset #fff', width: '20px', height: '20px', cursor: 'pointer', fontSize: '12px', lineHeight: '12px', padding: 0, fontWeight: 'bold' }}>✕</button>
+            </div>
+
+            <div style={{ padding: '12px 8px', background: '#d4d0c8' }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px', fontSize: '11px' }}>
+                <div>
+                  <span style={{ fontWeight: 'bold' }}>Date: </span>
+                  <input id="move-date" type="text" value={moveData.newDate} onChange={(e) => setMoveData({ ...moveData, newDate: e.target.value })} onKeyDown={(e) => focusNextInput(e, 'move-game')} style={{ width: '80px', fontSize: '12px', fontWeight: 'bold', border: '2px inset #fff', padding: '2px 4px', outline: 'none', background: '#fff', color: '#000' }} />
+                </div>
+                <div>
+                  <span style={{ fontWeight: 'bold' }}>Game: </span>
+                  <select id="move-game" value={moveData.newGame} onChange={(e) => setMoveData({ ...moveData, newGame: e.target.value })} onKeyDown={(e) => focusNextInput(e, 'move-party')} style={{ fontSize: '12px', fontWeight: 'bold', border: '2px inset #fff', padding: '2px', background: '#fff', outline: 'none', width: '70px' }}>
+                    {availableGames.map((gName, idx) => (<option key={idx} value={gName}>{gName}</option>))}
+                  </select>
+                </div>
+                <div>
+                  <span style={{ fontWeight: 'bold' }}>Party: </span>
+                  <select id="move-party" value={moveData.newParty} onChange={(e) => handleMovePartyChange(e.target.value)} onKeyDown={(e) => focusNextInput(e, 'move-dpcomm')} style={{ width: '180px', fontSize: '12px', fontWeight: 'bold', border: '2px inset #fff', padding: '2px', background: '#fff', outline: 'none' }}>
+                    {masterParties.map((p) => (<option key={p.pno || p.id} value={p.party_name}>{p.party_name}</option>))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ border: '2px inset #fff', background: '#fff', display: 'flex', alignItems: 'center' }}>
+                  <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
+                    <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '1px 4px', fontWeight: 'bold' }}>D_PComm</div>
+                    <input id="move-dpcomm" type="text" value={movePartyRates.d_comm} onChange={(e) => handleMoveDPcommChange(e.target.value)} onKeyDown={(e) => focusNextInput(e, 'move-damt')} style={{ width: '40px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', background: '#fff', color: '#000', outline: 'none' }} />
+                  </div>
+                  <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
+                    <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '1px 4px', fontWeight: 'bold' }}>D_Amt</div>
+                    <input id="move-damt" type="text" value={movePartyRates.d_amt} onChange={(e) => setMovePartyRates({ ...movePartyRates, d_amt: e.target.value })} onKeyDown={(e) => focusNextInput(e, 'move-apcomm')} style={{ width: '45px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', background: '#f0f0f0', color: '#000', outline: 'none' }} />
+                  </div>
+                  <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
+                    <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '1px 4px', fontWeight: 'bold' }}>A_PComm</div>
+                    <input id="move-apcomm" type="text" value={movePartyRates.a_comm} onChange={(e) => handleMoveAPcommChange(e.target.value)} onKeyDown={(e) => focusNextInput(e, 'move-aamt')} style={{ width: '40px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', outline: 'none' }} />
+                  </div>
+                  <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
+                    <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '1px 4px', fontWeight: 'bold' }}>A_Amt</div>
+                    <input id="move-aamt" type="text" value={movePartyRates.a_amt} onChange={(e) => setMovePartyRates({ ...movePartyRates, a_amt: e.target.value })} onKeyDown={(e) => focusNextInput(e, 'move-patti')} style={{ width: '45px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', background: '#f0f0f0', outline: 'none' }} />
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '1px 4px', fontWeight: 'bold' }}>Patti_Perc</div>
+                    <input id="move-patti" type="text" value={movePartyRates.patti_perc} onChange={(e) => setMovePartyRates({ ...movePartyRates, patti_perc: e.target.value })} onKeyDown={(e) => focusNextInput(e, 'move-confirm-btn')} style={{ width: '35px', textAlign: 'center', border: 'none', fontSize: '12px', outline: 'none' }} />
+                  </div>
+                </div>
+
+                <button id="move-confirm-btn" onClick={handleConfirmMove} style={{ padding: '4px 16px', background: '#d4d0c8', color: '#000', border: '2px outset #fff', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
+                  Update
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <WhatsAppPasteModal
+        isOpen={isWhatsAppModalOpen}
+        onClose={() => setIsWhatsAppModalOpen(false)}
+        onConfirmEntries={handleConfirmWhatsAppEntries}
+      />
 
     </div>
-
-    {/* MOVE VOUCHER POPUP MODAL (Bold Headers & Proper Border) */}
-    {isMoveModalOpen && (
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-        <div style={{ background: '#d4d0c8', border: '3px outset #fff', boxShadow: '4px 4px 12px rgba(0,0,0,0.6)', padding: '2px', width: '600px', fontFamily: 'Tahoma, sans-serif' }}>
-          
-          <div style={{ background: '#000080', color: '#fff', padding: '4px 6px', fontSize: '12px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>🔄</span>
-              <span>Move Voucher</span>
-            </div>
-            <button onClick={() => setIsMoveModalOpen(false)} style={{ background: '#d4d0c8', color: '#000', border: '2px outset #fff', width: '20px', height: '20px', cursor: 'pointer', fontSize: '12px', lineHeight: '12px', padding: 0, fontWeight: 'bold' }}>✕</button>
-          </div>
-
-          <div style={{ padding: '12px 8px', background: '#d4d0c8' }}>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px', fontSize: '11px' }}>
-              <div>
-                <span style={{ fontWeight: 'bold' }}>Date: </span>
-                <input id="move-date" type="text" value={moveData.newDate} onChange={(e) => setMoveData({ ...moveData, newDate: e.target.value })} onKeyDown={(e) => focusNextInput(e, 'move-game')} style={{ width: '80px', fontSize: '12px', fontWeight: 'bold', border: '2px inset #fff', padding: '2px 4px', outline: 'none', background: '#fff', color: '#000' }} />
-              </div>
-              <div>
-                <span style={{ fontWeight: 'bold' }}>Game: </span>
-                <select id="move-game" value={moveData.newGame} onChange={(e) => setMoveData({ ...moveData, newGame: e.target.value })} onKeyDown={(e) => focusNextInput(e, 'move-party')} style={{ fontSize: '12px', fontWeight: 'bold', border: '2px inset #fff', padding: '2px', background: '#fff', outline: 'none', width: '70px' }}>
-                  {availableGames.map((gName, idx) => (<option key={idx} value={gName}>{gName}</option>))}
-                </select>
-              </div>
-              <div>
-                <span style={{ fontWeight: 'bold' }}>Party: </span>
-                <select id="move-party" value={moveData.newParty} onChange={(e) => handleMovePartyChange(e.target.value)} onKeyDown={(e) => focusNextInput(e, 'move-dpcomm')} style={{ width: '180px', fontSize: '12px', fontWeight: 'bold', border: '2px inset #fff', padding: '2px', background: '#fff', outline: 'none' }}>
-                  {masterParties.map((p) => (<option key={p.pno || p.id} value={p.party_name}>{p.party_name}</option>))}
-                </select>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ border: '2px inset #fff', background: '#fff', display: 'flex', alignItems: 'center' }}>
-                <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
-                  <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '1px 4px', fontWeight: 'bold' }}>D_PComm</div>
-                  <input id="move-dpcomm" type="text" value={movePartyRates.d_comm} onChange={(e) => handleMoveDPcommChange(e.target.value)} onKeyDown={(e) => focusNextInput(e, 'move-damt')} style={{ width: '40px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', background: '#fff', color: '#000', outline: 'none' }} />
-                </div>
-                <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
-                  <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '1px 4px', fontWeight: 'bold' }}>D_Amt</div>
-                  <input id="move-damt" type="text" value={movePartyRates.d_amt} onChange={(e) => setMovePartyRates({ ...movePartyRates, d_amt: e.target.value })} onKeyDown={(e) => focusNextInput(e, 'move-apcomm')} style={{ width: '45px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', background: '#f0f0f0', color: '#000', outline: 'none' }} />
-                </div>
-                <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
-                  <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '1px 4px', fontWeight: 'bold' }}>A_PComm</div>
-                  <input id="move-apcomm" type="text" value={movePartyRates.a_comm} onChange={(e) => handleMoveAPcommChange(e.target.value)} onKeyDown={(e) => focusNextInput(e, 'move-aamt')} style={{ width: '40px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', outline: 'none' }} />
-                </div>
-                <div style={{ textAlign: 'center', borderRight: '1px solid #777' }}>
-                  <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '1px 4px', fontWeight: 'bold' }}>A_Amt</div>
-                  <input id="move-aamt" type="text" value={movePartyRates.a_amt} onChange={(e) => setMovePartyRates({ ...movePartyRates, a_amt: e.target.value })} onKeyDown={(e) => focusNextInput(e, 'move-patti')} style={{ width: '45px', textAlign: 'center', border: 'none', fontWeight: 'bold', fontSize: '12px', background: '#f0f0f0', outline: 'none' }} />
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '1px 4px', fontWeight: 'bold' }}>Patti_Perc</div>
-                  <input id="move-patti" type="text" value={movePartyRates.patti_perc} onChange={(e) => setMovePartyRates({ ...movePartyRates, patti_perc: e.target.value })} onKeyDown={(e) => focusNextInput(e, 'move-confirm-btn')} style={{ width: '35px', textAlign: 'center', border: 'none', fontSize: '12px', outline: 'none' }} />
-                </div>
-              </div>
-
-              <button id="move-confirm-btn" onClick={handleConfirmMove} style={{ padding: '4px 16px', background: '#d4d0c8', color: '#000', border: '2px outset #fff', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
-                Update
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
-
-    <WhatsAppPasteModal
-      isOpen={isWhatsAppModalOpen}
-      onClose={() => setIsWhatsAppModalOpen(false)}
-      onConfirmEntries={handleConfirmWhatsAppEntries}
-    />
-
-  </div>
-);
+  );
 }

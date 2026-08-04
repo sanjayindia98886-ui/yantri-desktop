@@ -35,14 +35,11 @@ export default function PartyF1({ userRole = 'Admin' }) {
 
   // Helper to restore focus back to Party Name input
   const restoreFocus = function() {
-  setTimeout(function() {
-    const inputEl = document.getElementById('f1PartyNameInput');
-    if (inputEl) {
-      inputEl.focus();
-      inputEl.select();
-    }
-  }, 100);
-};
+    window.focus();
+    setTimeout(function() {
+      document.getElementById('f1PartyNameInput')?.focus();
+    }, 50);
+  };
 
   const fetchParties = function() {
     axios.get('https://yantri-desktop.onrender.com/api/parties')
@@ -56,6 +53,7 @@ export default function PartyF1({ userRole = 'Admin' }) {
       });
   };
 
+  
   useEffect(function() {
     fetchParties();
   }, []);
@@ -108,26 +106,23 @@ export default function PartyF1({ userRole = 'Admin' }) {
     const apiCall = isEdit 
       ? axios.put('https://yantri-desktop.onrender.com/api/parties', formData)
       : axios.post('https://yantri-desktop.onrender.com/api/parties', formData);
-apiCall
-  .then(function(res) {
-    if (res.data && (res.data.success || res.data.pno)) {
-      // 1. पहले फॉर्म रिसेट और डेटा फेच करें
-      handleReset();
-      fetchParties();
 
-      // 2. अलर्ट को 100ms के डिले से दिखाएं ताकि React State तुरंत अपडेट हो जाए
-      setTimeout(function() {
-        alert(isEdit ? 'Party Updated Successfully!' : 'Party Saved Successfully!');
-        
-        // 3. अलर्ट OK दबाने के तुरंत बाद कर्सर फ़ोकस करें
+    apiCall
+      .then(function(res) {
+        if (res.data && (res.data.success || res.data.pno)) {
+          alert(isEdit ? 'Party Updated Successfully!' : 'Party Saved Successfully!');
+          handleReset();
+          fetchParties();
+        } else {
+          alert('Failed to save party: ' + (res.data.error || 'Unknown error'));
+          restoreFocus();
+        }
+      })
+      .catch(function(err) {
+        console.error('Save error:', err);
+        alert('Server Connection Error! Make sure node server is running.');
         restoreFocus();
-      }, 100);
-
-    } else {
-      alert('Failed to save party: ' + (res.data.error || 'Unknown error'));
-      restoreFocus();
-    }
-  })
+      });
   };
 
   const handleDelete = function(pno) {
