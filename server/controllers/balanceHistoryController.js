@@ -1,6 +1,6 @@
 var db = require('../config/database');
 
-// Date Formatter Helper (F9 Logic)
+// Date Formatter Helper (DD/MM/YYYY and YYYY-MM-DD converter)
 function parseDateToNum(dateStr) {
   if (!dateStr) return 0;
   var str = String(dateStr).trim();
@@ -81,7 +81,7 @@ var getBalanceHistory = function(req, res) {
 
     var withoutHissa = req.query.withoutHissa === 'true';
 
-    // 1. Fetch Sales (Fixes Postgres TRIM(?) Error)
+    // 1. Safe Sales Fetch (No SQL Date Comparison Error)
     var salesQuery = "SELECT s.sale_id, s.sale_date, s.party_name, s.game_name, " +
       "si.number_val, si.amount, si.bet_type " +
       "FROM sales s " +
@@ -90,7 +90,7 @@ var getBalanceHistory = function(req, res) {
     db.all(salesQuery, [], function(sErr, allSalesData) {
       if (sErr) return res.status(500).json({ success: false, error: sErr.message });
 
-      // JavaScript Date Filter (Matches F9 behavior)
+      // In-Memory JavaScript Date Filter
       var salesData = (allSalesData || []).filter(function(s) {
         var sNum = parseDateToNum(s.sale_date);
         return (fromNum > 0 && toNum > 0 && sNum > 0) ? (sNum >= fromNum && sNum <= toNum) : true;
@@ -163,7 +163,7 @@ var getBalanceHistory = function(req, res) {
             };
           });
 
-          // Process Game wise Sales & Winning Calculations
+          // Calculate Balances & Winnings
           (parties || []).forEach(function(party) {
             var pKey = String(party.party_name || '').toLowerCase().trim();
             var partySales = (salesData || []).filter(function(s) {

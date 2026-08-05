@@ -148,12 +148,12 @@ export default function BalanceHistoryF8() {
           restoreFocus();
         }
       })
-      .catch(function(error) {
-        console.error('Error fetching balance history:', error);
-        alert('Server Error (500/Connection Failed): ' + error.message);
-        restoreFocus();
-      })
-      .finally(function() {
+.catch(function(error) {
+    console.error('Error fetching balance history:', error);
+    alert('Server Error (500/Connection Failed): ' + error.message);
+    restoreFocus();
+  }) 
+       .finally(function() {
         setLoading(false);
       });
   };
