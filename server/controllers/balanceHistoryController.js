@@ -1,6 +1,6 @@
 var db = require('../config/database');
 
-// Date Formatter Helper
+// Date Formatter Helper (F9 Logic)
 function parseDateToNum(dateStr) {
   if (!dateStr) return 0;
   var str = String(dateStr).trim();
@@ -81,22 +81,39 @@ var getBalanceHistory = function(req, res) {
 
     var withoutHissa = req.query.withoutHissa === 'true';
 
-    // 1. Safe Query without TRIM(?) for Postgres Compatibility
-    var gameQuery = "SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM sales ORDER BY game_name ASC;";
+    // 1. Fetch Sales (Fixes Postgres TRIM(?) Error)
+    var salesQuery = "SELECT s.sale_id, s.sale_date, s.party_name, s.game_name, " +
+      "si.number_val, si.amount, si.bet_type " +
+      "FROM sales s " +
+      "JOIN sale_items si ON s.sale_id = si.sale_id;";
 
-    db.all(gameQuery, [], function(gErr, gameRows) {
-      if (gErr) return res.status(500).json({ success: false, error: gErr.message });
+    db.all(salesQuery, [], function(sErr, allSalesData) {
+      if (sErr) return res.status(500).json({ success: false, error: sErr.message });
 
-      var masterGames = (gameRows || []).map(function(g) { return g.game_name; }).filter(Boolean);
+      // JavaScript Date Filter (Matches F9 behavior)
+      var salesData = (allSalesData || []).filter(function(s) {
+        var sNum = parseDateToNum(s.sale_date);
+        return (fromNum > 0 && toNum > 0 && sNum > 0) ? (sNum >= fromNum && sNum <= toNum) : true;
+      });
 
-      if (!masterGames || masterGames.length === 0) {
-        masterGames = ["FARIDABAD", "GAZIABAD", "GALI", "DISAWAR"];
+      var activeGames = [];
+      salesData.forEach(function(s) {
+        if (s.game_name) {
+          var gUpper = String(s.game_name).toUpperCase().trim();
+          if (activeGames.indexOf(gUpper) === -1) {
+            activeGames.push(gUpper);
+          }
+        }
+      });
+
+      if (activeGames.length === 0) {
+        activeGames = ["FARIDABAD", "GAZIABAD", "GALI", "DISAWAR"];
       }
 
-      processBalanceHistory(masterGames);
+      processBalanceHistory(activeGames, salesData);
     });
 
-    function processBalanceHistory(activeGames) {
+    function processBalanceHistory(activeGames, salesData) {
       // 2. Fetch Active Parties
       db.all("SELECT * FROM parties WHERE LOWER(status) = 'active' ORDER BY party_name ASC;", [], function(pErr, parties) {
         if (pErr) return res.status(500).json({ success: false, error: pErr.message });
@@ -114,168 +131,152 @@ var getBalanceHistory = function(req, res) {
             }
           });
 
-          // 4. Fetch Sales Data cleanly without TRIM(?)
-          var salesQuery = "SELECT s.sale_id, s.sale_date, s.party_name, s.game_name, " +
-            "si.number_val, si.amount, si.bet_type " +
-            "FROM sales s " +
-            "JOIN sale_items si ON s.sale_id = si.sale_id;";
+          var shiftBalanceMap = {};
+          var shiftSaleMap = {};
+          activeGames.forEach(function(g) {
+            shiftBalanceMap[g] = 0;
+            shiftSaleMap[g] = 0;
+          });
 
-          db.all(salesQuery, [], function(sErr, allSalesData) {
-            if (sErr) return res.status(500).json({ success: false, error: sErr.message });
+          var tpPattiAccumulator = {};
+          var partyMap = {};
 
-            // Date filtering in JS (Exact same as F9)
-            var salesData = (allSalesData || []).filter(function(s) {
-              var sNum = parseDateToNum(s.sale_date);
-              return (fromNum > 0 && toNum > 0 && sNum > 0) ? (sNum >= fromNum && sNum <= toNum) : true;
+          (parties || []).forEach(function(p) {
+            var pKey = String(p.party_name || '').toLowerCase().trim();
+            tpPattiAccumulator[pKey] = 0;
+
+            var gameObj = {};
+            activeGames.forEach(function(g) { gameObj[g] = null; });
+
+            partyMap[pKey] = {
+              pno: p.pno || p.id,
+              pname: p.party_name,
+              party_name: p.party_name,
+              PName: p.party_name,
+              totalAmount: 0,
+              totalBalance: 0,
+              winJodaTotal: 0,
+              winAkharTotal: 0,
+              games: gameObj,
+              hissa_party: String(p.hissa_party || '').trim(),
+              hissa_patti_perc: Number(p.hissa_patti_perc) || 0
+            };
+          });
+
+          // Process Game wise Sales & Winning Calculations
+          (parties || []).forEach(function(party) {
+            var pKey = String(party.party_name || '').toLowerCase().trim();
+            var partySales = (salesData || []).filter(function(s) {
+              return s.party_name && String(s.party_name).toLowerCase().trim() === pKey;
             });
 
-            var shiftBalanceMap = {};
-            var shiftSaleMap = {};
-            activeGames.forEach(function(g) {
-              shiftBalanceMap[g] = 0;
-              shiftSaleMap[g] = 0;
-            });
+            var partyTotalSale = 0;
+            var partyTotalBalance = 0;
+            var partyTotalJoda = 0;
+            var partyTotalAkhar = 0;
 
-            var tpPattiAccumulator = {};
-            var partyMap = {};
-
-            (parties || []).forEach(function(p) {
-              var pKey = String(p.party_name || '').toLowerCase().trim();
-              tpPattiAccumulator[pKey] = 0;
-
-              var gameObj = {};
-              activeGames.forEach(function(g) { gameObj[g] = null; });
-
-              partyMap[pKey] = {
-                pno: p.pno || p.id,
-                pname: p.party_name,
-                party_name: p.party_name,
-                PName: p.party_name,
-                totalAmount: 0,
-                totalBalance: 0,
-                winJodaTotal: 0,
-                winAkharTotal: 0,
-                games: gameObj,
-                hissa_party: String(p.hissa_party || '').trim(),
-                hissa_patti_perc: Number(p.hissa_patti_perc) || 0
-              };
-            });
-
-            // Process Game wise Sales & Winning Calculations
-            (parties || []).forEach(function(party) {
-              var pKey = String(party.party_name || '').toLowerCase().trim();
-              var partySales = (salesData || []).filter(function(s) {
-                return s.party_name && String(s.party_name).toLowerCase().trim() === pKey;
-              });
-
-              var partyTotalSale = 0;
-              var partyTotalBalance = 0;
-              var partyTotalJoda = 0;
-              var partyTotalAkhar = 0;
-
-              if (partySales.length > 0) {
-                activeGames.forEach(function(g) {
-                  var gSales = partySales.filter(function(s) {
-                    return s.game_name && String(s.game_name).toUpperCase().trim() === g;
-                  });
-                  if (gSales.length === 0) return;
-
-                  var dSale = 0, aSale = 0;
-                  var winNoPlayedAmt = 0;
-                  var winAkharPlayedAmt = 0;
-
-                  var dComm = Number(party.d_comm) || 10;
-                  var aComm = Number(party.a_comm) || 10;
-                  var dAmt = Number(party.d_amt) || 90;
-                  var aAmt = Number(party.a_amt) || 9;
-
-                  gSales.forEach(function(item) {
-                    var amt = Number(item.amount) || 0;
-                    var parsed = parseBetItem(item.number_val, item.bet_type);
-                    var sNum = parseDateToNum(item.sale_date);
-                    var resKey = sNum + '_' + g;
-                    var declaredRes = resultMap[resKey] || '';
-
-                    if (parsed.type === 'ANDER' || parsed.type === 'BAHAR') aSale += amt;
-                    else dSale += amt;
-
-                    if (declaredRes) {
-                      var normRes = declaredRes.padStart(2, '0');
-                      if (normRes.length > 2) normRes = normRes.slice(-2);
-                      var resJodi = normRes;
-                      var resAnder = normRes[0];
-                      var resBahar = normRes[1];
-
-                      if (parsed.type === 'ANDER' && parsed.digit === resAnder) winNoPlayedAmt += (amt * 0.10);
-                      else if (parsed.type === 'BAHAR' && parsed.digit === resBahar) winAkharPlayedAmt += amt;
-                      else if (parsed.type === 'JODI' && parsed.jodi === resJodi) winNoPlayedAmt += amt;
-                    }
-                  });
-
-                  var totalGameSale = dSale + aSale;
-                  var comm = Math.trunc((dSale * (dComm / 100)) + (aSale * (aComm / 100)));
-                  var actualSale = totalGameSale - comm;
-                  var winAmount = (winNoPlayedAmt * dAmt) + (winAkharPlayedAmt * aAmt);
-                  var netBal = actualSale - winAmount;
-
-                  partyMap[pKey].games[g] = {
-                    sale: totalGameSale,
-                    balance: netBal,
-                    winJoda: winNoPlayedAmt,
-                    winAkhar: winAkharPlayedAmt
-                  };
-
-                  partyTotalSale += totalGameSale;
-                  partyTotalBalance += netBal;
-                  partyTotalJoda += winNoPlayedAmt;
-                  partyTotalAkhar += winAkharPlayedAmt;
-
-                  shiftSaleMap[g] = (shiftSaleMap[g] || 0) + totalGameSale;
-                  shiftBalanceMap[g] = (shiftBalanceMap[g] || 0) + netBal;
+            if (partySales.length > 0) {
+              activeGames.forEach(function(g) {
+                var gSales = partySales.filter(function(s) {
+                  return s.game_name && String(s.game_name).toUpperCase().trim() === g;
                 });
+                if (gSales.length === 0) return;
+
+                var dSale = 0, aSale = 0;
+                var winNoPlayedAmt = 0;
+                var winAkharPlayedAmt = 0;
+
+                var dComm = Number(party.d_comm) || 10;
+                var aComm = Number(party.a_comm) || 10;
+                var dAmt = Number(party.d_amt) || 90;
+                var aAmt = Number(party.a_amt) || 9;
+
+                gSales.forEach(function(item) {
+                  var amt = Number(item.amount) || 0;
+                  var parsed = parseBetItem(item.number_val, item.bet_type);
+                  var sNum = parseDateToNum(item.sale_date);
+                  var resKey = sNum + '_' + g;
+                  var declaredRes = resultMap[resKey] || '';
+
+                  if (parsed.type === 'ANDER' || parsed.type === 'BAHAR') aSale += amt;
+                  else dSale += amt;
+
+                  if (declaredRes) {
+                    var normRes = declaredRes.padStart(2, '0');
+                    if (normRes.length > 2) normRes = normRes.slice(-2);
+                    var resJodi = normRes;
+                    var resAnder = normRes[0];
+                    var resBahar = normRes[1];
+
+                    if (parsed.type === 'ANDER' && parsed.digit === resAnder) winNoPlayedAmt += (amt * 0.10);
+                    else if (parsed.type === 'BAHAR' && parsed.digit === resBahar) winAkharPlayedAmt += amt;
+                    else if (parsed.type === 'JODI' && parsed.jodi === resJodi) winNoPlayedAmt += amt;
+                  }
+                });
+
+                var totalGameSale = dSale + aSale;
+                var comm = Math.trunc((dSale * (dComm / 100)) + (aSale * (aComm / 100)));
+                var actualSale = totalGameSale - comm;
+                var winAmount = (winNoPlayedAmt * dAmt) + (winAkharPlayedAmt * aAmt);
+                var netBal = actualSale - winAmount;
+
+                partyMap[pKey].games[g] = {
+                  sale: totalGameSale,
+                  balance: netBal,
+                  winJoda: winNoPlayedAmt,
+                  winAkhar: winAkharPlayedAmt
+                };
+
+                partyTotalSale += totalGameSale;
+                partyTotalBalance += netBal;
+                partyTotalJoda += winNoPlayedAmt;
+                partyTotalAkhar += winAkharPlayedAmt;
+
+                shiftSaleMap[g] = (shiftSaleMap[g] || 0) + totalGameSale;
+                shiftBalanceMap[g] = (shiftBalanceMap[g] || 0) + netBal;
+              });
+            }
+
+            partyMap[pKey].totalAmount = partyTotalSale;
+            partyMap[pKey].winJodaTotal = partyTotalJoda;
+            partyMap[pKey].winAkharTotal = partyTotalAkhar;
+
+            var partnerKey = String(party.hissa_party || '').toLowerCase().trim();
+            var hissaPerc = Number(party.hissa_patti_perc) || 0;
+
+            var finalPartyBalance = partyTotalBalance;
+            if (!withoutHissa && partnerKey && partnerKey !== '0' && partnerKey !== '' && hissaPerc > 0) {
+              var partnerShareAmt = Math.trunc((partyTotalBalance * hissaPerc) / 100);
+              finalPartyBalance = partyTotalBalance - partnerShareAmt;
+
+              if (tpPattiAccumulator[partnerKey] !== undefined) {
+                tpPattiAccumulator[partnerKey] += partnerShareAmt;
+              } else {
+                tpPattiAccumulator[partnerKey] = partnerShareAmt;
               }
+            }
 
-              partyMap[pKey].totalAmount = partyTotalSale;
-              partyMap[pKey].winJodaTotal = partyTotalJoda;
-              partyMap[pKey].winAkharTotal = partyTotalAkhar;
+            partyMap[pKey].totalBalance = finalPartyBalance;
+          });
 
-              var partnerKey = String(party.hissa_party || '').toLowerCase().trim();
-              var hissaPerc = Number(party.hissa_patti_perc) || 0;
+          var finalRows = [];
+          Object.keys(partyMap).forEach(function(k) {
+            var pData = partyMap[k];
+            var earnedPatti = tpPattiAccumulator[k] || 0;
 
-              var finalPartyBalance = partyTotalBalance;
-              if (!withoutHissa && partnerKey && partnerKey !== '0' && partnerKey !== '' && hissaPerc > 0) {
-                var partnerShareAmt = Math.trunc((partyTotalBalance * hissaPerc) / 100);
-                finalPartyBalance = partyTotalBalance - partnerShareAmt;
+            if (!withoutHissa && earnedPatti > 0) {
+              pData.totalBalance += earnedPatti;
+            }
 
-                if (tpPattiAccumulator[partnerKey] !== undefined) {
-                  tpPattiAccumulator[partnerKey] += partnerShareAmt;
-                } else {
-                  tpPattiAccumulator[partnerKey] = partnerShareAmt;
-                }
-              }
+            finalRows.push(pData);
+          });
 
-              partyMap[pKey].totalBalance = finalPartyBalance;
-            });
-
-            var finalRows = [];
-            Object.keys(partyMap).forEach(function(k) {
-              var pData = partyMap[k];
-              var earnedPatti = tpPattiAccumulator[k] || 0;
-
-              if (!withoutHissa && earnedPatti > 0) {
-                pData.totalBalance += earnedPatti;
-              }
-
-              finalRows.push(pData);
-            });
-
-            return res.json({
-              success: true,
-              games: activeGames,
-              rows: finalRows,
-              shiftBalance: shiftBalanceMap,
-              shiftSale: shiftSaleMap
-            });
+          return res.json({
+            success: true,
+            games: activeGames,
+            rows: finalRows,
+            shiftBalance: shiftBalanceMap,
+            shiftSale: shiftSaleMap
           });
         });
       });
