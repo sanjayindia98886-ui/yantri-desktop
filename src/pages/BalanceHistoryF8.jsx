@@ -1,47 +1,47 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 export default function BalanceHistoryF8() {
-  const getTodayDateStr = function() {
-    const today = new Date();
-    const dd = String(today.getDate()).padStart(2, '0');
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const yyyy = today.getFullYear();
+  var getTodayDateStr = function() {
+    var today = new Date();
+    var dd = String(today.getDate()).padStart(2, '0');
+    var mm = String(today.getMonth() + 1).padStart(2, '0');
+    var yyyy = today.getFullYear();
     return dd + '/' + mm + '/' + yyyy;
   };
 
-  const [balanceType, setBalanceType] = useState('/ Daily Balance / Win');
-  const [fromDate, setFromDate] = useState(getTodayDateStr());
-  const [toDate, setToDate] = useState(getTodayDateStr());
-  const [withoutHissa, setWithoutHissa] = useState(false);
+  var [balanceType, setBalanceType] = useState('/ Daily Balance / Win');
+  var [fromDate, setFromDate] = useState(getTodayDateStr());
+  var [toDate, setToDate] = useState(getTodayDateStr());
+  var [withoutHissa, setWithoutHissa] = useState(false);
   
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [loading, setLoading] = useState(false);
+  var [isLoaded, setIsLoaded] = useState(false);
+  var [loading, setLoading] = useState(false);
 
   // Active Focused Table Tracker: 'TOP', 'BAL', or 'SALE'
-  const [activeTable, setActiveTable] = useState('TOP');
+  var [activeTable, setActiveTable] = useState('TOP');
 
   // Row Selection States for All 3 Grids
-  const [selectedTopRow, setSelectedTopRow] = useState(0);
-  const [selectedBalIndex, setSelectedBalIndex] = useState(0);
-  const [selectedSaleIndex, setSelectedSaleIndex] = useState(0);
+  var [selectedTopRow, setSelectedTopRow] = useState(0);
+  var [selectedBalIndex, setSelectedBalIndex] = useState(0);
+  var [selectedSaleIndex, setSelectedSaleIndex] = useState(0);
 
-  const [games, setGames] = useState([]);
-  const [historyData, setHistoryData] = useState([]);
-  const [shiftBalance, setShiftBalance] = useState({});
-  const [shiftSale, setShiftSale] = useState({});
+  var [games, setGames] = useState([]);
+  var [historyData, setHistoryData] = useState([]);
+  var [shiftBalance, setShiftBalance] = useState({});
+  var [shiftSale, setShiftSale] = useState({});
 
   // Container Refs for Auto Scrolling
-  const topWrapperRef = useRef(null);
-  const balWrapperRef = useRef(null);
-  const saleWrapperRef = useRef(null);
+  var topWrapperRef = useRef(null);
+  var balWrapperRef = useRef(null);
+  var saleWrapperRef = useRef(null);
 
   // Helper to restore focus back to Date input
-  const restoreFocus = function() {
+  var restoreFocus = function() {
     setTimeout(function() {
       if (typeof window !== 'undefined') {
         window.focus();
       }
-      const el = document.getElementById('f8FromDateInput');
+      var el = document.getElementById('f8FromDateInput');
       if (el) {
         el.focus();
         if (typeof el.select === 'function') {
@@ -57,24 +57,24 @@ export default function BalanceHistoryF8() {
       if (!isLoaded) return;
 
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        const isDown = e.key === 'ArrowDown';
+        var isDown = e.key === 'ArrowDown';
 
         if (activeTable === 'TOP' && historyData.length > 0) {
           e.preventDefault();
           setSelectedTopRow(function(prev) {
-            const current = (prev === null || prev === undefined) ? 0 : prev;
+            var current = (prev === null || prev === undefined) ? 0 : prev;
             return isDown ? Math.min(current + 1, historyData.length - 1) : Math.max(current - 1, 0);
           });
         } else if (activeTable === 'BAL' && games.length > 0) {
           e.preventDefault();
           setSelectedBalIndex(function(prev) {
-            const current = (prev === null || prev === undefined) ? 0 : prev;
+            var current = (prev === null || prev === undefined) ? 0 : prev;
             return isDown ? Math.min(current + 1, games.length - 1) : Math.max(current - 1, 0);
           });
         } else if (activeTable === 'SALE' && games.length > 0) {
           e.preventDefault();
           setSelectedSaleIndex(function(prev) {
-            const current = (prev === null || prev === undefined) ? 0 : prev;
+            var current = (prev === null || prev === undefined) ? 0 : prev;
             return isDown ? Math.min(current + 1, games.length - 1) : Math.max(current - 1, 0);
           });
         }
@@ -90,37 +90,47 @@ export default function BalanceHistoryF8() {
   // Auto-scroll logic when arrow keys change selection
   useEffect(function() {
     if (activeTable === 'TOP' && topWrapperRef.current) {
-      const el = topWrapperRef.current.querySelector('.selected-row');
+      var el = topWrapperRef.current.querySelector('.selected-row');
       if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   }, [selectedTopRow, activeTable]);
 
   useEffect(function() {
     if (activeTable === 'BAL' && balWrapperRef.current) {
-      const el = balWrapperRef.current.querySelector('.selected-row');
+      var el = balWrapperRef.current.querySelector('.selected-row');
       if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   }, [selectedBalIndex, activeTable]);
 
   useEffect(function() {
     if (activeTable === 'SALE' && saleWrapperRef.current) {
-      const el = saleWrapperRef.current.querySelector('.selected-row');
+      var el = saleWrapperRef.current.querySelector('.selected-row');
       if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   }, [selectedSaleIndex, activeTable]);
 
-  const fetchBalanceHistory = function(overrideWithoutHissa) {
-    const checkHissa = overrideWithoutHissa !== undefined ? overrideWithoutHissa : withoutHissa;
+  var fetchBalanceHistory = function(overrideWithoutHissa) {
+    var checkHissa = overrideWithoutHissa !== undefined ? overrideWithoutHissa : withoutHissa;
     setLoading(true);
     
-    const url = 'https://yantri-desktop.onrender.com/api/balance-history?fromDate=' + encodeURIComponent(fromDate) + '&toDate=' + encodeURIComponent(toDate) + '&withoutHissa=' + checkHissa;
+    // Base API Endpoint Setup
+    var baseUrl = (typeof window !== 'undefined' && window.location.hostname === 'localhost')
+      ? 'http://localhost:5000'
+      : 'https://yantri-desktop.onrender.com';
+
+    var url = baseUrl + '/api/balance-history?fromDate=' + encodeURIComponent(fromDate) + '&toDate=' + encodeURIComponent(toDate) + '&withoutHissa=' + checkHissa;
     
     fetch(url)
-      .then(function(res) { return res.json(); })
+      .then(function(res) {
+        if (!res.ok) {
+          throw new Error('Server returned status: ' + res.status);
+        }
+        return res.json();
+      })
       .then(function(data) {
-        if (data.success) {
-          const fetchedGames = data.games || [];
-          const fetchedRows = data.rows || [];
+        if (data && data.success) {
+          var fetchedGames = data.games || [];
+          var fetchedRows = data.rows || [];
           setGames(fetchedGames);
           setHistoryData(fetchedRows);
           setShiftBalance(data.shiftBalance || {});
@@ -133,10 +143,14 @@ export default function BalanceHistoryF8() {
             setSelectedSaleIndex(0);
           }
           restoreFocus();
+        } else {
+          alert('Error: ' + (data ? data.error : 'Data fetch failed'));
+          restoreFocus();
         }
       })
       .catch(function(error) {
         console.error('Error fetching balance history:', error);
+        alert('Server Error (500/Connection Failed): ' + error.message);
         restoreFocus();
       })
       .finally(function() {
@@ -144,24 +158,24 @@ export default function BalanceHistoryF8() {
       });
   };
 
-  const handleShowClick = function() {
+  var handleShowClick = function() {
     fetchBalanceHistory(withoutHissa);
   };
 
-  const handleWithoutHissaChange = function(e) {
-    const isChecked = e.target.checked;
+  var handleWithoutHissaChange = function(e) {
+    var isChecked = e.target.checked;
     setWithoutHissa(isChecked);
     if (isLoaded) {
       fetchBalanceHistory(isChecked);
     }
   };
 
-  const handlePrint = function() {
+  var handlePrint = function() {
     window.print();
     restoreFocus();
   };
 
-  const cssStyles = 
+  var cssStyles = 
     ".f8-container { padding: 4px; background-color: #d0d5dd; height: 95vh; font-size: 10px; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; display: flex; flex-direction: column; box-sizing: border-box; outline: none; }\n" +
     ".filter-bar { display: flex; gap: 8px; align-items: center; background: #e0e5eb; padding: 3px 6px; border: 1px solid #999; margin-bottom: 4px; font-size: 11px; font-weight: bold; }\n" +
     ".table-wrapper { flex: 1; background: #ffffff; border: 1px solid #777; overflow: auto; margin-bottom: 4px; position: relative; }\n" +
@@ -238,7 +252,7 @@ export default function BalanceHistoryF8() {
             </thead>
             <tbody>
               {historyData.map(function(row, idx) {
-                const isSelected = selectedTopRow === idx;
+                var isSelected = selectedTopRow === idx;
                 return (
                   <tr 
                     key={idx} 
@@ -251,7 +265,7 @@ export default function BalanceHistoryF8() {
                   >
                     <td className="pname-col">{row.pname}</td>
                     {games.map(function(g) {
-                      const item = row.games[g];
+                      var item = row.games ? row.games[g] : null;
                       if (!item) return <td key={g}></td>;
                       return (
                         <td key={g}>
@@ -303,7 +317,7 @@ export default function BalanceHistoryF8() {
                 </thead>
                 <tbody>
                   {games.map(function(g, idx) {
-                    const isSelected = selectedBalIndex === idx;
+                    var isSelected = selectedBalIndex === idx;
                     return (
                       <tr 
                         key={g} 
@@ -345,7 +359,7 @@ export default function BalanceHistoryF8() {
                 </thead>
                 <tbody>
                   {games.map(function(g, idx) {
-                    const isSelected = selectedSaleIndex === idx;
+                    var isSelected = selectedSaleIndex === idx;
                     return (
                       <tr 
                         key={g} 
