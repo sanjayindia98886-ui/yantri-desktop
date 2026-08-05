@@ -1,15 +1,17 @@
 const db = require('../config/database');
 
-// Helper function: Convert DD/MM/YYYY to YYYY-MM-DD for SQL
+// Helper function: Convert DD/MM/YYYY to YYYY-MM-DD or standard trim
 function toIsoDate(dateStr) {
-  if (!dateStr || dateStr.length < 10) return dateStr;
-  if (dateStr.indexOf('/') !== -1) {
-    const parts = dateStr.split('/');
+  if (!dateStr || typeof dateStr !== 'string') return '';
+  const trimmed = dateStr.trim();
+  if (trimmed.length < 10) return trimmed;
+  if (trimmed.indexOf('/') !== -1) {
+    const parts = trimmed.split('/');
     if (parts.length === 3) {
       return parts[2] + '-' + parts[1].padStart(2, '0') + '-' + parts[0].padStart(2, '0');
     }
   }
-  return dateStr;
+  return trimmed;
 }
 
 // Bet Parser Engine for F8 (Jodi, Ander, Bahar Detection)
@@ -59,12 +61,17 @@ function parseBetItem(numStr, betType) {
 // Main F8 Controller
 const getBalanceHistory = (req, res) => {
   try {
-    const fromDate = String(req.query.fromDate || '').trim();
-    const toDate = String(req.query.toDate || fromDate).trim();
+    const rawFromDate = String(req.query.fromDate || '').trim();
+    const rawToDate = String(req.query.toDate || rawFromDate).trim();
+    
+    // Normalization for SQL matching
+    const fromDate = rawFromDate;
+    const toDate = rawToDate;
+    
     const withoutHissa = req.query.withoutHissa === 'true';
 
-    // 1. Dynamic Active Games Fetching
-    const gameQuery = "SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM sales WHERE TRIM(sale_date) >= TRIM($1) AND TRIM(sale_date) <= TRIM($2) ORDER BY sale_id ASC;";
+    // 1. Dynamic Active Games Fetching using '?' for SQLite compatibility wrapper
+    const gameQuery = "SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM sales WHERE TRIM(sale_date) >= TRIM(?) AND TRIM(sale_date) <= TRIM(?) ORDER BY sale_id ASC;";
 
     db.all(gameQuery, [fromDate, toDate], function(gErr, gameRows) {
       if (gErr) return res.status(500).json({ success: false, error: gErr.message });
@@ -85,8 +92,9 @@ const getBalanceHistory = (req, res) => {
         db.all("SELECT * FROM parties WHERE LOWER(status) = 'active' ORDER BY party_name ASC;", [], function(pErr, parties) {
           if (pErr) return res.status(500).json({ success: false, error: pErr.message });
 
-          // 3. Fetch Results
-          db.all("SELECT result_date, game_name, winning_number FROM results WHERE TRIM(result_date) >= TRIM($1) AND TRIM(result_date) <= TRIM($2);", [fromDate, toDate], function(rErr, resultsList) {
+          // 3. Fetch Results using '?' placeholders
+          const resultQuery = "SELECT result_date, game_name, winning_number FROM results WHERE TRIM(result_date) >= TRIM(?) AND TRIM(result_date) <= TRIM(?);";
+          db.all(resultQuery, [fromDate, toDate], function(rErr, resultsList) {
             if (rErr) return res.status(500).json({ success: false, error: rErr.message });
 
             const resultMap = {};
@@ -97,12 +105,12 @@ const getBalanceHistory = (req, res) => {
               }
             });
 
-            // 4. Fetch Sales Data
+            // 4. Fetch Sales Data using '?' placeholders
             const salesQuery = "SELECT s.sale_id, s.sale_date, s.party_name, s.game_name, " +
               "si.number_val, si.amount, si.bet_type " +
               "FROM sales s " +
               "JOIN sale_items si ON s.sale_id = si.sale_id " +
-              "WHERE TRIM(s.sale_date) >= TRIM($1) AND TRIM(s.sale_date) <= TRIM($2);";
+              "WHERE TRIM(s.sale_date) >= TRIM(?) AND TRIM(s.sale_date) <= TRIM(?);";
 
             db.all(salesQuery, [fromDate, toDate], function(sErr, salesData) {
               if (sErr) return res.status(500).json({ success: false, error: sErr.message });
