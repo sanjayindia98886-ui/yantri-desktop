@@ -13,7 +13,8 @@ const getBalanceHistory = function (req, res) {
     const toDate = String(req.query.toDate || fromDate).trim();
     const withoutHissa = req.query.withoutHissa === 'true';
 
-    const gameQuery = "SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM sales WHERE TRIM(sale_date) >= TRIM($1) AND TRIM(sale_date) <= TRIM($2) ORDER BY sale_id ASC;";
+    // FIX 1: PostgreSQL Compatible DISTINCT + ORDER BY query without TRIM($1)
+    const gameQuery = "SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM sales WHERE sale_date >= $1 AND sale_date <= $2;";
 
     db.all(gameQuery, [fromDate, toDate], function (gErr, gameRows) {
       if (gErr) return res.status(500).json({ success: false, error: gErr.message });
@@ -21,7 +22,7 @@ const getBalanceHistory = function (req, res) {
       let masterGames = (gameRows || []).map(function (g) { return g.game_name; }).filter(Boolean);
 
       if (!masterGames || masterGames.length === 0) {
-        db.all("SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM games ORDER BY game_id ASC;", [], function (mgErr, mgRows) {
+        db.all("SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM games;", [], function (mgErr, mgRows) {
           masterGames = (mgRows || []).map(function (g) { return g.game_name; }).filter(Boolean);
           processBalanceHistory(masterGames);
         });
@@ -33,7 +34,7 @@ const getBalanceHistory = function (req, res) {
         db.all("SELECT * FROM parties WHERE LOWER(status) = 'active' ORDER BY party_name ASC;", [], function (pErr, parties) {
           if (pErr) return res.status(500).json({ success: false, error: pErr.message });
 
-          db.all("SELECT result_date, game_name, winning_number FROM results WHERE TRIM(result_date) >= TRIM($1) AND TRIM(result_date) <= TRIM($2);", [fromDate, toDate], function (rErr, resultsList) {
+          db.all("SELECT result_date, game_name, winning_number FROM results WHERE result_date >= $1 AND result_date <= $2;", [fromDate, toDate], function (rErr, resultsList) {
             if (rErr) return res.status(500).json({ success: false, error: rErr.message });
 
             const resultMap = {};
@@ -48,7 +49,7 @@ const getBalanceHistory = function (req, res) {
               "si.number_val, si.amount, si.bet_type " +
               "FROM sales s " +
               "JOIN sale_items si ON s.sale_id = si.sale_id " +
-              "WHERE TRIM(s.sale_date) >= TRIM($1) AND TRIM(s.sale_date) <= TRIM($2);";
+              "WHERE s.sale_date >= $1 AND s.sale_date <= $2;";
 
             db.all(salesQuery, [fromDate, toDate], function (sErr, salesData) {
               if (sErr) return res.status(500).json({ success: false, error: sErr.message });
@@ -208,7 +209,7 @@ const getBalanceHistory = function (req, res) {
   }
 };
 
-// 2. F11: BALANCE SHEET CONTROLLER (Strict F7/F12 Sync & 3rd Party LC Fix)
+// 2. F11: BALANCE SHEET CONTROLLER
 const getBalanceSheet = function (req, res) {
   try {
     const fromDateRaw = String(req.query.fromDate || '15/07/2026').trim();
@@ -260,7 +261,7 @@ const getBalanceSheet = function (req, res) {
                 }
               });
 
-              // STEP 1: Third Party Hissa/Patti Calculate karke Map banana
+              // STEP 1: Third Party Hissa/Patti Calculate
               const tpPattiMap = {};
 
               partyList.forEach(function (party) {
@@ -317,14 +318,13 @@ const getBalanceSheet = function (req, res) {
                     totalGameNetBalance += (actualSale - winAmount);
                   });
 
-                  // Sanjay ke 4750 se 20% Rahul ke map me add hoga
                   const calculatedTpPatti = Math.trunc((totalGameNetBalance * hissaPattiPerc) / 100);
                   if (!tpPattiMap[hParty]) tpPattiMap[hParty] = 0;
                   tpPattiMap[hParty] += calculatedTpPatti;
                 }
               });
 
-              // STEP 2: Main Rows Generate Karna
+              // STEP 2: Main Rows Generate
               const resultList = partyList.map(function (party) {
                 const pname = party.party_name || '';
                 const normPName = pname.toLowerCase().trim();
@@ -346,7 +346,6 @@ const getBalanceSheet = function (req, res) {
                   }
                 });
 
-                // Direct Posted LC
                 let postedLcAmount = 0;
                 safePostedLc.forEach(function (plc) {
                   if (plc.party_name && plc.party_name.toLowerCase().trim() === normPName) {
@@ -358,7 +357,6 @@ const getBalanceSheet = function (req, res) {
                   }
                 });
 
-                // F11 FIX: Rahul (3rd Party) ke Net Balance me Sanjay ki Posted LC Effect Sync karna (Strict F12 Match)
                 let thirdPartyPostedLcEffect = 0;
                 partyList.forEach(function (srcParty) {
                   const srcOvLcParty = String(srcParty.override_lc_party || '').toLowerCase().trim();
@@ -376,7 +374,6 @@ const getBalanceSheet = function (req, res) {
                   }
                 });
 
-                // Total Posted LC Effect for Net Balance
                 const totalPostedLc = postedLcAmount + thirdPartyPostedLcEffect;
 
                 dynamicGames.forEach(function (g) {
@@ -432,17 +429,14 @@ const getBalanceSheet = function (req, res) {
                   totalGameNetBalance += gamesMap[g].net;
                 });
 
-                // F11 FIX 1: Self Patti deduction billkul NAHI hoga. Sanjay ka Todays = 4750 hi rahega
                 let finalTodays = totalGameNetBalance;
 
-                // F11 FIX 2: Sanjay ke liye TP_Patti = 0 rahegi. Rahul ke liye Sanjay ka 20% hissa aayega
                 let earnedTpPatti = tpPattiMap[normPName] || 0;
                 let displayTpPatti = 0;
                 if (earnedTpPatti !== 0) {
-                  displayTpPatti = -earnedTpPatti; // Jama ke liye -ve, Name ke liye +ve
+                  displayTpPatti = -earnedTpPatti;
                 }
 
-                // Final Net Balance = Opening + Todays + TP Patti (Rahul ke liye) + Ledger Payment - Total Posted LC
                 let netBal = opening + finalTodays + earnedTpPatti + netPayment - totalPostedLc;
 
                 return {
@@ -454,8 +448,8 @@ const getBalanceSheet = function (req, res) {
                   status: party.status || 'Active',
                   hissa_party: party.hissa_party || '',
                   opening: opening,
-                  todays: finalTodays,          // Sanjay ke liye exactly 4750
-                  tpPatti: displayTpPatti,       // Sanjay ke liye 0, Rahul ke liye uska 20%
+                  todays: finalTodays,
+                  tpPatti: displayTpPatti,
                   payment: netPayment,
                   tpComm: 0,
                   net_balance: netBal,
