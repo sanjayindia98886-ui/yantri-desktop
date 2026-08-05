@@ -57,13 +57,14 @@ export default function VoucherSaleF2() {
 
   const hasProcessedImport = useRef(false);
 
-  // Helper to jump cursor directly to grid bottom
+  // Helper to jump cursor directly to grid bottom ONLY on Escape
   const focusGridBottom = function() {
     setTimeout(function() {
       const lastIndex = manualRows.length > 0 ? manualRows.length - 1 : 0;
       const targetElem = document.getElementById('no-input-' + lastIndex);
       if (targetElem) {
         targetElem.focus();
+        if (typeof targetElem.select === 'function') targetElem.select();
       }
     }, 30);
   };
@@ -81,9 +82,9 @@ export default function VoucherSaleF2() {
     }, 50);
   };
 
-  // Helper Down Arrow handler for top controls
+  // Helper KeyDown handler for top controls (Enter Navigation & Escape ONLY)
   const handleTopControlKeyDown = function(e, nextFieldId) {
-    if (e.key === 'ArrowDown') {
+    if (e.key === 'Escape') {
       e.preventDefault();
       focusGridBottom();
       return;
@@ -215,6 +216,11 @@ export default function VoucherSaleF2() {
   };
 
   const focusNextInput = function(e, nextId) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      focusGridBottom();
+      return;
+    }
     if (e.key === 'Enter') {
       e.preventDefault();
       const elem = document.getElementById(nextId);
@@ -741,8 +747,7 @@ export default function VoucherSaleF2() {
   const handleCopy = function() {
     if (!selectedVoucherId && manualRows.length <= 1) return;
     setSelectedVoucherId(null);
-    const partyElem = document.getElementById('party-select-dropdown');
-    if (partyElem) partyElem.focus();
+    restoreFocus();
   };
 
   const handleDelete = function() {
@@ -842,30 +847,20 @@ export default function VoucherSaleF2() {
     const handleGlobalShortcut = function(e) {
       const activeElem = document.activeElement;
 
-      // 1. Allow Dropdown Navigation without Jumping
-      if (activeElem && (activeElem.id === 'party-select-dropdown' || activeElem.tagName === 'SELECT')) {
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
-          return;
-        }
-      }
-
-      // 2. Ctrl + P Handler
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+      // 1. Universal Escape Key Handler -> Jumps straight to Grid Bottom ONLY on Escape
+      if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        const partyElem = document.getElementById('party-select-dropdown');
-        if (partyElem) partyElem.focus();
+        focusGridBottom();
         return;
       }
 
-      // 3. PageDown Grid Esc Key
-      if (activeElem && activeElem.id && activeElem.id.startsWith('no-input-')) {
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          e.stopPropagation();
-          focusGridBottom();
-          return;
-        }
+      // 2. Ctrl + P Handler -> Focus Party Dropdown
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        e.stopPropagation();
+        restoreFocus();
+        return;
       }
 
       if (['F1', 'F3', 'F4', 'F5', 'F12'].includes(e.key)) {
@@ -929,6 +924,7 @@ export default function VoucherSaleF2() {
     const matchesUid = uidText ? String(p.uid || '').includes(uidText) : true;
     return matchesFilter && matchesUid;
   });
+
 return (
     <div style={{ padding: '4px', background: '#d4d0c8', height: 'calc(100vh - 45px)', fontSize: '11px', fontFamily: 'Tahoma, "MS Sans Serif", Arial, sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', color: '#000', userSelect: 'none', overflow: 'hidden' }}>
 
@@ -969,14 +965,17 @@ return (
             disabled={!!selectedVoucherId}
             onChange={function(e) { handlePartySelectChange(e.target.value); }}
             onKeyDown={function(e) {
-              if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                e.stopPropagation();
-              } else if (e.key === 'Enter') {
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                focusGridBottom();
+                return;
+              }
+              if (e.key === 'Enter') {
                 e.preventDefault();
                 e.stopPropagation();
-                const firstInput = document.getElementById('no-input-0');
-                if (firstInput) {
-                  firstInput.focus();
+                const nextInput = document.getElementById('f2-dpcomm');
+                if (nextInput) {
+                  nextInput.focus();
                 }
               }
             }}
@@ -1012,21 +1011,21 @@ return (
 
           <div style={{ textAlign: 'center' }}>
             <div style={{ background: '#000080', color: '#fff', fontSize: '10px', padding: '2px 4px', fontWeight: 'bold' }}>Patti_Perc</div>
-            <input id="f2-patti" type="text" readOnly={!!selectedVoucherId} value={pattiPerc} onChange={function(e) { setPattiPerc(e.target.value); }} onKeyDown={function(e) { handleTopControlKeyDown(e, 'no-input-0'); }} style={{ width: '35px', textAlign: 'center', border: 'none', fontSize: '12px', fontWeight: 'bold', background: selectedVoucherId ? '#f0f0f0' : '#fff', outline: 'none' }} />
+            <input id="f2-patti" type="text" readOnly={!!selectedVoucherId} value={pattiPerc} onChange={function(e) { setPattiPerc(e.target.value); }} onKeyDown={function(e) { if (e.key === 'Escape') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); focusGridBottom(); } }} style={{ width: '35px', textAlign: 'center', border: 'none', fontSize: '12px', fontWeight: 'bold', background: selectedVoucherId ? '#f0f0f0' : '#fff', outline: 'none' }} />
           </div>
         </div>
 
         {/* HISSA BOX */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px', alignItems: 'center', fontSize: '11px', padding: '2px', border: '2px groove #fff', background: '#d4d0c8' }}>
           <span style={{ fontWeight: 'bold' }}>Hissa Party:</span>
-          <select value={hissaParty} onChange={function(e) { setHissaParty(e.target.value); }} style={{ width: '90px', fontSize: '11px', border: '2px inset #fff', outline: 'none' }}>
+          <select value={hissaParty} onChange={function(e) { setHissaParty(e.target.value); }} onKeyDown={function(e) { if (e.key === 'Escape') { e.preventDefault(); focusGridBottom(); } }} style={{ width: '90px', fontSize: '11px', border: '2px inset #fff', outline: 'none' }}>
             <option value="">-- Choose --</option>
             {masterParties.map(function(p) {
               return <option key={p.pno || p.id} value={p.party_name}>{p.party_name}</option>;
             })}
           </select>
           <span style={{ fontWeight: 'bold' }}>%</span>
-          <input type="text" value={hissaPerc} onChange={function(e) { setHissaPerc(e.target.value); }} style={{ width: '30px', fontSize: '11px', border: '2px inset #fff', outline: 'none' }} />
+          <input type="text" value={hissaPerc} onChange={function(e) { setHissaPerc(e.target.value); }} onKeyDown={function(e) { if (e.key === 'Escape') { e.preventDefault(); focusGridBottom(); } }} style={{ width: '30px', fontSize: '11px', border: '2px inset #fff', outline: 'none' }} />
         </div>
       </div>
 
@@ -1097,17 +1096,57 @@ return (
         <div style={{ flex: 1, border: '2px inset #fff', padding: '6px', background: '#fce8e8', display: 'flex', flexDirection: 'column', gap: '6px', boxSizing: 'border-box', overflowY: 'auto', minHeight: 0 }}>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '6px', flexShrink: 0 }}>
-            <div style={{ border: '2px groove #e0c0c0', background: '#fdf3f3', padding: '6px' }}>
+           <div style={{ border: '2px groove #e0c0c0', background: '#fdf3f3', padding: '6px' }}>
               <strong style={{ fontSize: '11px', color: '#000' }}>Laddi (Ctrl+L)</strong>
               <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <span>No From: </span>
-                <input id="laddi-from-input" type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={laddi.from} onChange={function(e) { setLaddi({ ...laddi, from: e.target.value }); }} onKeyDown={function(e) { handleTopControlKeyDown(e, 'laddi-to-input'); }} />
+                <input
+                  id="laddi-from-input"
+                  type="text"
+                  style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }}
+                  value={laddi.from || ''}
+                  onChange={function(e) {
+                    const val = e.target.value;
+                    setLaddi({ ...laddi, from: val });
+                  }}
+                  onKeyDown={function(e) { handleTopControlKeyDown(e, 'laddi-to-input'); }}
+                />
                 <span>No To: </span>
-                <input id="laddi-to-input" type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={laddi.to} onChange={function(e) { setLaddi({ ...laddi, to: e.target.value }); }} onKeyDown={function(e) { handleTopControlKeyDown(e, 'laddi-amt-input'); }} />
+                <input
+                  id="laddi-to-input"
+                  type="text"
+                  style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }}
+                  value={laddi.to || ''}
+                  onChange={function(e) {
+                    const val = e.target.value;
+                    setLaddi({ ...laddi, to: val });
+                  }}
+                  onKeyDown={function(e) { handleTopControlKeyDown(e, 'laddi-amt-input'); }}
+                />
               </div>
               <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <span>Amount: </span>
-                <input id="laddi-amt-input" type="text" style={{ width: '70px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={laddi.amount} onChange={function(e) { setLaddi({ ...laddi, amount: e.target.value }); }} onKeyDown={function(e) { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleLaddiSubmit(); } }} />
+                <input
+                  id="laddi-amt-input"
+                  type="text"
+                  style={{ width: '70px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }}
+                  value={laddi.amount || ''}
+                  onChange={function(e) {
+                    const val = e.target.value;
+                    setLaddi({ ...laddi, amount: val });
+                  }}
+                  onKeyDown={function(e) {
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      focusGridBottom();
+                      return;
+                    }
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleLaddiSubmit();
+                    }
+                  }}
+                />
               </div>
             </div>
 
@@ -1122,7 +1161,7 @@ return (
               </div>
               <div style={{ marginTop: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <span>Amt: </span>
-                <input id="pehada-amt-input" type="text" style={{ width: '60px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={pehada.amt} onChange={function(e) { setPehada({ ...pehada, amt: e.target.value }); }} onKeyDown={function(e) { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handlePehadaSubmit(); } }} />
+                <input id="pehada-amt-input" type="text" style={{ width: '60px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={pehada.amt} onChange={function(e) { setPehada({ ...pehada, amt: e.target.value }); }} onKeyDown={function(e) { if (e.key === 'Escape') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handlePehadaSubmit(); } }} />
               </div>
             </div>
           </div>
@@ -1140,7 +1179,7 @@ return (
               </div>
               <div style={{ marginTop: '2px', display: 'flex', gap: '4px', alignItems: 'center' }}>
                 <span>Amount: </span>
-                <input id="haruf-amt-input" type="text" style={{ width: '50px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={haruf.amount} onChange={function(e) { setHaruf({ ...haruf, amount: e.target.value }); }} onKeyDown={function(e) { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleHarufSubmit(); } }} />
+                <input id="haruf-amt-input" type="text" style={{ width: '50px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={haruf.amount} onChange={function(e) { setHaruf({ ...haruf, amount: e.target.value }); }} onKeyDown={function(e) { if (e.key === 'Escape') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleHarufSubmit(); } }} />
               </div>
             </div>
 
@@ -1152,7 +1191,7 @@ return (
               </div>
               <div style={{ marginTop: '4px', display: 'flex', gap: '4px', alignItems: 'center' }}>
                 <span>No: </span>
-                <input id="equal-no-input" type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={equalAmt.no} onChange={function(e) { setEqualAmt({ ...equalAmt, no: e.target.value }); }} onKeyDown={function(e) { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleEqualAmtSubmit(); } }} />
+                <input id="equal-no-input" type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={equalAmt.no} onChange={function(e) { setEqualAmt({ ...equalAmt, no: e.target.value }); }} onKeyDown={function(e) { if (e.key === 'Escape') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleEqualAmtSubmit(); } }} />
               </div>
             </div>
 
@@ -1160,7 +1199,7 @@ return (
               <strong style={{ fontSize: '11px', color: '#000' }}>Jode</strong>
               <div style={{ marginTop: '4px', display: 'flex', gap: '4px', alignItems: 'center' }}>
                 <span>Amt: </span>
-                <input type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={jode.amt} onChange={function(e) { setJode({ ...jode, amt: e.target.value }); }} onKeyDown={function(e) { if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleJodeSubmit(); } }} />
+                <input type="text" style={{ width: '55px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }} value={jode.amt} onChange={function(e) { setJode({ ...jode, amt: e.target.value }); }} onKeyDown={function(e) { if (e.key === 'Escape') { e.preventDefault(); focusGridBottom(); return; } if (e.key === 'Enter') { e.preventDefault(); handleJodeSubmit(); } }} />
               </div>
               <div style={{ marginTop: '6px' }}>
                 <label style={{ fontSize: '11px' }}><input type="checkbox" checked={jode.include00} onChange={function(e) { setJode({ ...jode, include00: e.target.checked }); }} /> Include 00</label>
@@ -1172,7 +1211,7 @@ return (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <strong style={{ fontSize: '11px' }}>BULK (Ctrl+B)</strong>
               <span style={{ color: '#800000', fontWeight: 'bold' }}>Type</span>
-              <select value={bulk.type} onChange={function(e) { setBulk({ ...bulk, type: e.target.value }); }} style={{ fontSize: '11px', border: '2px inset #fff', outline: 'none', flex: 1 }}>
+              <select value={bulk.type} onChange={function(e) { setBulk({ ...bulk, type: e.target.value }); }} onKeyDown={function(e) { if (e.key === 'Escape') { e.preventDefault(); focusGridBottom(); } }} style={{ fontSize: '11px', border: '2px inset #fff', outline: 'none', flex: 1 }}>
                 <option value="Bulk (F6)">Bulk (F6)</option>
                 <option value="Ander Akhar (eq. 1579)-F7">Ander Akhar (eq. 1579)-F7</option>
                 <option value="Bahar Akhar (eq. 1579)-F8">Bahar Akhar (eq. 1579)-F8</option>
@@ -1191,7 +1230,7 @@ return (
                 value={bulk.nos}
                 onChange={function(e) { handleBulkNosChange(e.target.value); }}
                 onKeyDown={function(e) {
-                  if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; }
+                  if (e.key === 'Escape') { e.preventDefault(); focusGridBottom(); return; }
                   if (e.key === 'Backspace' && bulk.type === 'Bulk (F6)') {
                     if (bulk.nos.endsWith('-')) { e.preventDefault(); setBulk({ ...bulk, nos: bulk.nos.slice(0, -2) }); return; }
                   }
@@ -1208,7 +1247,7 @@ return (
                 value={bulk.amt || ''}
                 onChange={function(e) { setBulk({ ...bulk, amt: e.target.value }); }}
                 onKeyDown={function(e) {
-                  if (e.key === 'ArrowDown') {
+                  if (e.key === 'Escape') {
                     e.preventDefault();
                     focusGridBottom();
                     return;
@@ -1235,7 +1274,7 @@ return (
                     value={bulk.palatAmt || ''}
                     onChange={function(e) { setBulk({ ...bulk, palatAmt: e.target.value }); }}
                     onKeyDown={function(e) {
-                      if (e.key === 'ArrowDown') { e.preventDefault(); focusGridBottom(); return; }
+                      if (e.key === 'Escape') { e.preventDefault(); focusGridBottom(); return; }
                       if (e.key === 'Enter') { e.preventDefault(); handleBulkSubmit(); }
                     }}
                     style={{ width: '60px', height: '18px', fontSize: '12px', border: '2px inset #fff', outline: 'none' }}
