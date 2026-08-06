@@ -40,6 +40,7 @@ export default function AccessControl() {
   const { fetchPermissions } = usePermission();
 
   const [users, setUsers] = useState([]);
+  const [hissaPartiesList, setHissaPartiesList] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedUserRole, setSelectedUserRole] = useState('user');
   const [userPermissions, setUserPermissions] = useState(defaultPermissions);
@@ -74,8 +75,26 @@ export default function AccessControl() {
       .catch((err) => console.error('Fetch users error:', err));
   };
 
+  // Fetch Unique Hissa Parties from F1 Parties
+  const fetchHissaParties = () => {
+    fetch('https://yantri-desktop.onrender.com/api/parties')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const uniqueHissa = [...new Set(
+            data
+              .map((p) => p.hissa_party)
+              .filter((hp) => hp && String(hp).trim() !== '')
+          )];
+          setHissaPartiesList(uniqueHissa);
+        }
+      })
+      .catch((err) => console.error('Fetch hissa parties error:', err));
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchHissaParties();
   }, []);
 
   const loadUserPermissions = (userId) => {
@@ -162,7 +181,7 @@ export default function AccessControl() {
   const handleCreateUser = (e) => {
     e.preventDefault();
     if (!newUsername.trim() || !newPassword.trim()) {
-      setNotification('Please enter both Username and Password');
+      setNotification('Please enter/select Username and Password');
       restoreFocus();
       return;
     }
@@ -173,13 +192,14 @@ export default function AccessControl() {
       body: JSON.stringify({
         username: newUsername.trim(),
         password: newPassword.trim(),
-        role: newRole
+        role: newRole,
+        linked_party_name: newRole === 'agent' ? newUsername.trim() : ''
       })
     })
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          setNotification('User created successfully!');
+          setNotification(newRole === 'agent' ? 'Agent linked successfully!' : 'User created successfully!');
           setTimeout(function() {
             setNotification('');
           }, 3000);
@@ -212,24 +232,43 @@ export default function AccessControl() {
 
       {/* Add New User */}
       <div style={{ background: '#fff', padding: '15px', border: '1px solid #7a96df', marginBottom: '20px', maxWidth: '600px' }}>
-        <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#000', fontWeight: 'bold' }}>➕ Add New User</h3>
+        <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#000', fontWeight: 'bold' }}>➕ Add New User / Agent</h3>
         <form onSubmit={handleCreateUser} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <select
             value={newRole}
-            onChange={(e) => setNewRole(e.target.value)}
+            onChange={(e) => {
+              setNewRole(e.target.value);
+              setNewUsername('');
+            }}
             style={{ padding: '4px 8px', border: '1px solid #7f9db9', fontWeight: 'bold' }}
           >
             <option value="user">User</option>
-            <option value="agent">Agent</option>
+            <option value="agent">Agent (Hissa Party)</option>
           </select>
-          <input
-            ref={usernameInputRef}
-            type="text"
-            placeholder="Username"
-            value={newUsername}
-            onChange={(e) => setNewUsername(e.target.value)}
-            style={{ padding: '4px 8px', border: '1px solid #7f9db9', fontWeight: 'bold' }}
-          />
+
+          {/* If Agent, Show Dropdown of F1 Hissa Parties */}
+          {newRole === 'agent' ? (
+            <select
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value)}
+              style={{ padding: '4px 8px', border: '1px solid #7f9db9', fontWeight: 'bold', minWidth: '150px' }}
+            >
+              <option value="">-- Choose Hissa Party --</option>
+              {hissaPartiesList.map((hp, idx) => (
+                <option key={idx} value={hp}>{hp}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              ref={usernameInputRef}
+              type="text"
+              placeholder="Username"
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value)}
+              style={{ padding: '4px 8px', border: '1px solid #7f9db9', fontWeight: 'bold' }}
+            />
+          )}
+
           <input
             type="password"
             placeholder="Password"
@@ -241,7 +280,7 @@ export default function AccessControl() {
             type="submit"
             style={{ padding: '4px 12px', background: '#28a745', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}
           >
-            Create
+            Save
           </button>
         </form>
       </div>
@@ -260,7 +299,7 @@ export default function AccessControl() {
             <option value="">-- Choose User --</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.username + ' (' + u.role + ')'}
+                {u.username + ' (' + u.role + ')' + (u.linked_party_name ? ' [Hissa: ' + u.linked_party_name + ']' : '')}
               </option>
             ))}
           </select>
@@ -271,10 +310,10 @@ export default function AccessControl() {
             <div style={{ marginTop: '15px', borderTop: '1px solid #ccc', paddingTop: '15px' }}>
               <h4 style={{ margin: '0 0 10px 0', color: '#0a246a', fontWeight: 'bold' }}>Agent Permissions (APK Only):</h4>
               <div style={{ background: '#fffde7', padding: '10px', border: '1px solid #e6db55', fontSize: '12px', fontWeight: 'bold', lineHeight: '1.8' }}>
-                ✓ F4 - Yantri (Read Only)<br />
-                ✓ F7 - Summary (Read Only)<br />
-                ✓ F11 - Balance Sheet (Read Only)<br />
-                ✓ F12 - Profit & Loss (Read Only)<br />
+                ✓ F4 - Yantri (Filtered by Hissa Party)<br />
+                ✓ F7 - Summary (Filtered by Hissa Party)<br />
+                ✓ F11 - Balance Sheet (Filtered by Hissa Party)<br />
+                ✓ F12 - Profit & Loss (Filtered by Hissa Party)<br />
                 ✓ Change Password Access
               </div>
             </div>

@@ -13,6 +13,10 @@ const getBalanceHistory = function (req, res) {
     const toDate = String(req.query.toDate || fromDate).trim();
     const withoutHissa = req.query.withoutHissa === 'true';
 
+    // Agent Check Parameters
+    const userRole = String(req.query.userRole || req.query.role || '').trim().toLowerCase();
+    const linkedPartyName = String(req.query.linked_party_name || req.query.linkedParty || '').trim();
+
     // FIX 1: PostgreSQL Compatible DISTINCT + ORDER BY query without TRIM($1)
     const gameQuery = "SELECT DISTINCT UPPER(TRIM(game_name)) AS game_name FROM sales WHERE sale_date >= $1 AND sale_date <= $2;";
 
@@ -180,7 +184,7 @@ const getBalanceHistory = function (req, res) {
                 partyMap[pKey].totalBalance = finalPartyBalance;
               });
 
-              const finalRows = [];
+              let finalRows = [];
               Object.keys(partyMap).forEach(function (k) {
                 const pData = partyMap[k];
                 const earnedPatti = tpPattiAccumulator[k] || 0;
@@ -191,6 +195,16 @@ const getBalanceHistory = function (req, res) {
 
                 finalRows.push(pData);
               });
+
+              // Agent Specific Isolation Filtering Logic
+              if (userRole === 'agent' && linkedPartyName) {
+                const normAgentParty = linkedPartyName.toLowerCase().trim();
+                finalRows = finalRows.filter(function (r) {
+                  const rPartyNorm = String(r.party_name || '').toLowerCase().trim();
+                  const rHissaNorm = String(r.hissa_party || '').toLowerCase().trim();
+                  return rPartyNorm === normAgentParty || rHissaNorm === normAgentParty;
+                });
+              }
 
               return res.json({
                 success: true,
@@ -215,6 +229,10 @@ const getBalanceSheet = function (req, res) {
     const fromDateRaw = String(req.query.fromDate || '15/07/2026').trim();
     const toDateRaw = String(req.query.toDate || '22/07/2026').trim();
     const withoutHissa = req.query.withoutHissa === 'true';
+
+    // Agent Check Parameters
+    const userRole = String(req.query.userRole || req.query.role || '').trim().toLowerCase();
+    const linkedPartyName = String(req.query.linked_party_name || req.query.linkedParty || '').trim();
 
     const isoFromDate = toIsoDate(fromDateRaw);
     const isoToDate = toIsoDate(toDateRaw);
@@ -325,7 +343,7 @@ const getBalanceSheet = function (req, res) {
               });
 
               // STEP 2: Main Rows Generate
-              const resultList = partyList.map(function (party) {
+              let resultList = partyList.map(function (party) {
                 const pname = party.party_name || '';
                 const normPName = pname.toLowerCase().trim();
 
@@ -456,6 +474,16 @@ const getBalanceSheet = function (req, res) {
                   games: gamesMap
                 };
               });
+
+              // Agent Specific Isolation Filtering Logic
+              if (userRole === 'agent' && linkedPartyName) {
+                const normAgentParty = linkedPartyName.toLowerCase().trim();
+                resultList = resultList.filter(function (r) {
+                  const rPartyNorm = String(r.party_name || '').toLowerCase().trim();
+                  const rHissaNorm = String(r.hissa_party || '').toLowerCase().trim();
+                  return rPartyNorm === normAgentParty || rHissaNorm === normAgentParty;
+                });
+              }
 
               return res.json({ success: true, data: resultList });
             });

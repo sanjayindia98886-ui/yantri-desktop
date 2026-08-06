@@ -59,7 +59,7 @@ function getDefaultPermissions(userId, role) {
 
 // 1. Fetch All Users
 const getUsers = (req, res) => {
-  const query = "SELECT id, username, role FROM users";
+  const query = "SELECT id, username, role, linked_party_name FROM users ORDER BY id ASC";
   db.query(query, [], (err, result) => {
     if (err) {
       return res.status(500).json({ error: err.message });
@@ -141,18 +141,20 @@ const updateUserPermissions = (req, res) => {
   });
 };
 
-// 4. Create New User
+// 4. Create New User / Agent
 const createUser = (req, res) => {
-  const { username, password, role } = req.body;
+  const { username, password, role, linked_party_name } = req.body;
 
   if (!username || !password) {
     return res.status(400).json({ error: "Username and password are required" });
   }
 
   const userRole = role ? role.toLowerCase() : 'user';
-  const insertUserQuery = "INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id";
+  const linkedParty = linked_party_name || (userRole === 'agent' ? username.trim() : '');
 
-  db.query(insertUserQuery, [username.trim(), password.trim(), userRole], (err, result) => {
+  const insertUserQuery = "INSERT INTO users (username, password, role, linked_party_name) VALUES ($1, $2, $3, $4) RETURNING id";
+
+  db.query(insertUserQuery, [username.trim(), password.trim(), userRole, linkedParty], (err, result) => {
     if (err) {
       if (err.message && err.message.includes('unique')) {
         return res.status(400).json({ error: "Username already exists" });
@@ -221,7 +223,8 @@ const loginUser = (req, res) => {
         user: {
           id: userRow.id,
           username: userRow.username,
-          role: userRow.role
+          role: userRow.role,
+          linked_party_name: userRow.linked_party_name || ''
         },
         permissions: finalPerms
       });

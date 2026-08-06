@@ -5,8 +5,17 @@ const { toIsoDate, parseBetItem, calculateGameWinning, calculatePartyOpening } =
 const getSummary = function (req, res) {
   try {
     const queryDate = String(req.query.date || '31/07/2026').trim();
-    const agentName = String(req.query.agent || '').trim();
+    let agentName = String(req.query.agent || '').trim();
     const withoutHissa = req.query.withoutHissa === 'true';
+
+    // Agent Check & Auto Party Linking Parameter
+    const userRole = String(req.query.userRole || req.query.role || '').trim().toLowerCase();
+    const linkedPartyName = String(req.query.linked_party_name || req.query.linkedParty || '').trim();
+
+    // Agar User Role Agent hai aur specific Agent/Party Name request me nahi aaya hai, to Linked Party Name use karein
+    if (userRole === 'agent' && linkedPartyName && !agentName) {
+      agentName = linkedPartyName;
+    }
 
     if (!agentName) {
       return res.status(400).json({ success: false, error: 'Agent/Party name is required' });
@@ -58,6 +67,7 @@ const getSummary = function (req, res) {
             "COALESCE(s.a_comm, p.a_comm) AS a_comm, " +
             "COALESCE(s.a_amt, p.a_amt) AS a_amt, " +
             "COALESCE(s.patti_perc, p.patti_perc) AS patti_perc, " +
+            "p.hissa_party, " +
             "si.number_val, si.amount, si.bet_type " +
             "FROM sales s " +
             "JOIN sale_items si ON s.sale_id = si.sale_id " +

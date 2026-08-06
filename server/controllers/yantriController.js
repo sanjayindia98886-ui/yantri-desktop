@@ -58,10 +58,11 @@ const getYantriGridData = (req, res) => {
     const partyName = String(req.query.party || '').trim();
     const yantriType = String(req.query.type || 'Actual Yantri').trim();
     
-    // User Permissions & Filtering Parameters
+    // User Permissions & Agent Parameters
     const userId = String(req.query.userId || '').trim();
-    const userRole = String(req.query.userRole || '').trim().toLowerCase();
+    const userRole = String(req.query.userRole || req.query.role || '').trim().toLowerCase();
     const filterUserId = String(req.query.filterUserId || '').trim();
+    const linkedPartyName = String(req.query.linked_party_name || req.query.linkedParty || '').trim();
 
     if (!queryDate || !queryGame) {
       return res.json({ success: true, gridData: {}, grandTotal: 0 });
@@ -72,6 +73,7 @@ const getYantriGridData = (req, res) => {
       'COALESCE(s.a_comm, p.a_comm, 10) AS a_comm, ' +
       'COALESCE(s.patti_perc, p.patti_perc, 0) AS patti_perc, ' +
       'COALESCE(p.hissa_patti_perc, 0) AS hissa_patti_perc, ' +
+      'p.hissa_party, ' +
       'si.number_val, si.amount ' +
       'FROM sales s ' +
       'JOIN sale_items si ON s.sale_id = si.sale_id ' +
@@ -81,6 +83,13 @@ const getYantriGridData = (req, res) => {
 
     const queryParams = [queryDate, queryGame];
     let paramIndex = 3;
+
+    // Agent Specific Hissa Party Filtering Logic
+    if (userRole === 'agent' && linkedPartyName) {
+      salesQuery += ' AND (LOWER(TRIM(p.hissa_party)) = LOWER(TRIM($' + paramIndex + ')) OR LOWER(TRIM(s.party_name)) = LOWER(TRIM($' + paramIndex + ')))';
+      queryParams.push(linkedPartyName);
+      paramIndex++;
+    }
 
     const upperParty = partyName.toUpperCase();
     if (
@@ -93,17 +102,19 @@ const getYantriGridData = (req, res) => {
       paramIndex++;
     }
 
-    // User Data Isolation
-    if (userRole !== 'super_admin') {
-      if (userId) {
+    // User Data Isolation (for Non-Agents)
+    if (userRole !== 'agent') {
+      if (userRole !== 'super_admin') {
+        if (userId) {
+          salesQuery += ' AND LOWER(TRIM(s.uid)) = LOWER(TRIM($' + paramIndex + '))';
+          queryParams.push(userId);
+          paramIndex++;
+        }
+      } else if (filterUserId && filterUserId.toUpperCase() !== 'ALL') {
         salesQuery += ' AND LOWER(TRIM(s.uid)) = LOWER(TRIM($' + paramIndex + '))';
-        queryParams.push(userId);
+        queryParams.push(filterUserId);
         paramIndex++;
       }
-    } else if (filterUserId && filterUserId.toUpperCase() !== 'ALL') {
-      salesQuery += ' AND LOWER(TRIM(s.uid)) = LOWER(TRIM($' + paramIndex + '))';
-      queryParams.push(filterUserId);
-      paramIndex++;
     }
 
     salesQuery += ';';

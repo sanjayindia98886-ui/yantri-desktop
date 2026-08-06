@@ -9,6 +9,10 @@ const getProfitLoss = function (req, res) {
     const partyTypeFilter = String(req.query.partyType || 'All').trim();
     const thirdPartyFilter = String(req.query.thirdParty || 'All').trim();
 
+    // Agent Check & Auto Party Linking Parameter
+    const userRole = String(req.query.userRole || req.query.role || '').trim().toLowerCase();
+    const linkedPartyName = String(req.query.linked_party_name || req.query.linkedParty || '').trim();
+
     const isoFromDate = toIsoDate(fromDateRaw);
     const isoToDate = toIsoDate(toDateRaw);
 
@@ -123,13 +127,13 @@ const getProfitLoss = function (req, res) {
                 const patti = pattiPerc > 0 ? Math.trunc((basePL * pattiPerc) / 100) : 0;
                 const pNetBalance = basePL - patti;
 
-                // Override LC: Sanjay ki Bachaat ka 5% Rahul ki row ke liye
+                // Override LC
                 if (ovLcParty && ovLcPerc > 0 && pNetBalance > 0) {
                   if (!extraLcMap[ovLcParty]) extraLcMap[ovLcParty] = 0;
                   extraLcMap[ovLcParty] += Math.trunc((pNetBalance * ovLcPerc) / 100);
                 }
 
-                // TP Patti: Sanjay ke 4750 ka 20% Rahul ki row ke liye
+                // TP Patti
                 if (hParty && hParty !== '0' && hissaPerc > 0) {
                   const calculatedPatti = Math.trunc((basePL * hissaPerc) / 100);
                   if (!extraTpPattiMap[hParty]) extraTpPattiMap[hParty] = 0;
@@ -137,7 +141,7 @@ const getProfitLoss = function (req, res) {
                 }
               });
 
-              const resultRows = [];
+              let resultRows = [];
 
               // STEP 2: Main Rows Generate Karna
               partyList.forEach(function (party) {
@@ -177,7 +181,7 @@ const getProfitLoss = function (req, res) {
                   }
                 });
 
-                // Check IF F9 Posted LC exists for THIS party (Sanjay)
+                // Check IF F9 Posted LC exists for THIS party
                 let postedLcAmountInF9 = 0;
                 safePostedLc.forEach(function (plc) {
                   if (plc.party_name && plc.party_name.toLowerCase().trim() === normPName) {
@@ -227,14 +231,14 @@ const getProfitLoss = function (req, res) {
                 const actualSale = totalSale - totalComm;
                 const basePL = actualSale - totalWin;
 
-                // Self Patti: Sanjay ki 20% patti = 950
+                // Self Patti
                 const selfPatti = pattiPerc > 0 ? Math.trunc((basePL * pattiPerc) / 100) : 0;
 
-                // TP Patti: Rahul ki row me Sanjay ka 20% (950) Jama (-ve) aayega
+                // TP Patti
                 const earnedTpPatti = extraTpPattiMap[normPName] || 0;
                 let displayTpPatti = earnedTpPatti !== 0 ? -earnedTpPatti : 0;
 
-                // Third Party LC (Rahul ke liye)
+                // Third Party LC
                 const earnedExtraLc = extraLcMap[normPName] || 0;
 
                 const totalGeneratedTpComm = extraTpCommMap[normPName] || 0;
@@ -258,7 +262,6 @@ const getProfitLoss = function (req, res) {
                 let postedLcEffect = postedLcAmountInF9 > 0 ? -postedLcAmountInF9 : 0;
                 let isThirdPartyLcPosted = false;
 
-                // Rahul ke Net Balance me Sanjay ki LC add hona & Post Status track hona
                 if (earnedExtraLc > 0) {
                   partyList.forEach(function (srcParty) {
                     const srcOvLcParty = String(srcParty.override_lc_party || '').toLowerCase().trim();
@@ -270,7 +273,7 @@ const getProfitLoss = function (req, res) {
                           const plcTo = toIsoDate(plc.to_date);
                           if (plcFrom >= isoFromDate && plcTo <= isoToDate) {
                             postedLcEffect += -Number(plc.lc_amount) || 0;
-                            isThirdPartyLcPosted = true; // Mark True: LC is Posted in F9!
+                            isThirdPartyLcPosted = true;
                           }
                         }
                       });
@@ -278,12 +281,12 @@ const getProfitLoss = function (req, res) {
                   });
                 }
 
-                // DISPLAY LC RULE: Jab tak F9 se Post NAHI हुई tab tak -237 dikhegi, Post hone ke baad 0 ho jayegi!
+                // DISPLAY LC RULE
                 let displayLc = 0;
                 if (earnedExtraLc > 0 && !isThirdPartyLcPosted) {
                   displayLc = -earnedExtraLc;
                 } else {
-                  displayLc = 0; // Post hone par LC Column clean (0)
+                  displayLc = 0;
                 }
 
                 let netBalance = opening + netPL + normalPayment + postedTpEffect + postedLcEffect;
@@ -292,6 +295,7 @@ const getProfitLoss = function (req, res) {
                   party_name: pname,
                   city: party.city || '',
                   party_type: party.party_type || party.type || 'Customer',
+                  hissa_party: party.hissa_party || '',
                   sale: totalSale,
                   comm: totalComm,
                   win: totalWin,
@@ -300,13 +304,23 @@ const getProfitLoss = function (req, res) {
                   tpComm: displayUnpostedComm,
                   isTpPosted: isTpPosted,
                   adjustment: adjustment,
-                  lc: displayLc,            // Pending rehne par -237, F9 se Post hone par Exactly 0!
-                  netPL: netPL,             // Sanjay: 3800
+                  lc: displayLc,
+                  netPL: netPL,
                   opening: opening,
                   payment: normalPayment,
-                  netBalance: netBalance     // Rahul: -987 (-750 TP Comm + -237 Posted LC)
+                  netBalance: netBalance
                 });
               });
+
+              // Agent Specific Isolation Filtering Logic
+              if (userRole === 'agent' && linkedPartyName) {
+                const normAgentParty = linkedPartyName.toLowerCase().trim();
+                resultRows = resultRows.filter(function (r) {
+                  const rPartyNorm = String(r.party_name || '').toLowerCase().trim();
+                  const rHissaNorm = String(r.hissa_party || '').toLowerCase().trim();
+                  return rPartyNorm === normAgentParty || rHissaNorm === normAgentParty;
+                });
+              }
 
               return res.json({ success: true, rows: resultRows, thirdParties: tpSet });
             });

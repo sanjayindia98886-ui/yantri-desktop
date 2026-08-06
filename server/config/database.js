@@ -176,7 +176,7 @@ const initDatabase = async () => {
       ");"
     );
 
-    // 11. Users Table (Updated Role Constraint for Agent)
+    // 11. Users Table (Updated Role Constraint and Linked Party Name Support for Agent)
     await pool.query(
       "CREATE TABLE IF NOT EXISTS users (" +
         "id SERIAL PRIMARY KEY, " +
@@ -184,14 +184,16 @@ const initDatabase = async () => {
         "username VARCHAR(100) NOT NULL, " +
         "password VARCHAR(255) NOT NULL, " +
         "role VARCHAR(50) CHECK(role IN ('super_admin', 'user', 'agent')) DEFAULT 'user', " +
+        "linked_party_name VARCHAR(255) DEFAULT '', " +
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
         "CONSTRAINT unique_user_per_company UNIQUE (company_id, username)" +
       ");"
     );
 
-    // Dynamic Alter for existing users table to support agent role
+    // Dynamic Alters for existing users table
     await pool.query("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;");
     await pool.query("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('super_admin', 'user', 'agent'));");
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS linked_party_name VARCHAR(255) DEFAULT '';");
 
     // 12. Permissions Table
     await pool.query(
