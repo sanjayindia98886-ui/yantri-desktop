@@ -176,18 +176,22 @@ const initDatabase = async () => {
       ");"
     );
 
-    // 11. Users Table
+    // 11. Users Table (Updated Role Constraint for Agent)
     await pool.query(
       "CREATE TABLE IF NOT EXISTS users (" +
         "id SERIAL PRIMARY KEY, " +
         "company_id VARCHAR(100) DEFAULT 'DEMO_COMP_101', " +
         "username VARCHAR(100) NOT NULL, " +
         "password VARCHAR(255) NOT NULL, " +
-        "role VARCHAR(50) CHECK(role IN ('super_admin', 'user')) DEFAULT 'user', " +
+        "role VARCHAR(50) CHECK(role IN ('super_admin', 'user', 'agent')) DEFAULT 'user', " +
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
         "CONSTRAINT unique_user_per_company UNIQUE (company_id, username)" +
       ");"
     );
+
+    // Dynamic Alter for existing users table to support agent role
+    await pool.query("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;");
+    await pool.query("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('super_admin', 'user', 'agent'));");
 
     // 12. Permissions Table
     await pool.query(
@@ -242,6 +246,7 @@ const initDatabase = async () => {
     await pool.query("CREATE INDEX IF NOT EXISTS idx_sale_items_number ON sale_items(number_val);");
     await pool.query("CREATE INDEX IF NOT EXISTS idx_ledger_party_date ON ledger_entries(company_id, party_name, entry_date);");
     await pool.query("CREATE INDEX IF NOT EXISTS idx_parties_company ON parties(company_id, party_name);");
+    await pool.query("CREATE INDEX IF NOT EXISTS idx_parties_hissa ON parties(company_id, hissa_party);");
     await pool.query("CREATE INDEX IF NOT EXISTS idx_results_company ON results(company_id, result_date, game_name);");
 
     console.log("✅ Supabase Tables, Company ID Columns, Licenses, and Indexes Initialized Successfully!");

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { usePermission } from '../context/PermissionContext';
@@ -7,10 +7,23 @@ export default function Login() {
   const navigate = useNavigate();
   const { setUser, setPermissions } = usePermission();
 
+  const [companyId, setCompanyId] = useState('101');
+  const [isFirstTime, setIsFirstTime] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // 1. Check if Admin ID / Company ID is already saved in LocalStorage
+  useEffect(() => {
+    const savedCompanyId = localStorage.getItem('yantri_company_id');
+    if (savedCompanyId) {
+      setCompanyId(savedCompanyId);
+      setIsFirstTime(false); // Do not ask for Admin ID again
+    } else {
+      setIsFirstTime(true); // Ask for Admin ID for the first time
+    }
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -19,27 +32,42 @@ export default function Login() {
       return;
     }
 
+    if (isFirstTime && !companyId.trim()) {
+      setErrorMsg('कृपया Admin ID (Company ID) दर्ज करें।');
+      return;
+    }
+
     setLoading(true);
     setErrorMsg('');
+
+    // Prepare full Company ID format (e.g. 101 -> DEMO_COMP_101)
+    const formattedCompanyId = companyId.trim().startsWith('DEMO_COMP_')
+      ? companyId.trim()
+      : 'DEMO_COMP_' + companyId.trim();
 
     try {
       const res = await axios.post('https://yantri-desktop.onrender.com/api/access/login', {
         username: username.trim(),
-        password: password.trim()
+        password: password.trim(),
+        company_id: formattedCompanyId
       });
 
       if (res.data && res.data.success) {
-        // 1. Logged-in User Info Context में सेट करें
+        // 2. Save Admin / Company ID permanently so it won't ask again
+        localStorage.setItem('yantri_company_id', companyId.trim());
+
+        // 3. Logged-in User Info Context में सेट करें
         setUser({
           id: res.data.user.id,
           username: res.data.user.username,
-          role: res.data.user.role // 'super_admin' या 'user'
+          role: res.data.user.role, // 'super_admin', 'user', या 'agent'
+          company_id: res.data.user.company_id || formattedCompanyId
         });
 
-        // 2. User Permissions Context में सेट करें
+        // 4. User Permissions Context में सेट करें
         setPermissions(res.data.permissions || {});
 
-        // 3. Login सफल होने पर Party Screen पर भेजें
+        // 5. Login सफल होने पर Party Screen पर भेजें
         navigate('/party');
       } else {
         setErrorMsg(res.data.message || 'गलत Username या Password!');
@@ -50,6 +78,12 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleResetCompanyId = () => {
+    localStorage.removeItem('yantri_company_id');
+    setIsFirstTime(true);
+    setCompanyId('101');
   };
 
   return (
@@ -74,15 +108,47 @@ export default function Login() {
           color: '#fff',
           padding: '6px 10px',
           fontWeight: 'bold',
-          fontSize: '13px'
+          fontSize: '13px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
-          Yantri Desktop - Login
+          <span>Yantri Desktop - Login</span>
+          {!isFirstTime && (
+            <span
+              onClick={handleResetCompanyId}
+              style={{ fontSize: '10px', cursor: 'pointer', textDecoration: 'underline', color: '#fff' }}
+              title="Admin ID बदलें"
+            >
+              Change Admin ID
+            </span>
+          )}
         </div>
 
         <form onSubmit={handleLogin} style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {errorMsg && (
             <div style={{ color: '#cc0000', fontSize: '11px', fontWeight: 'bold', background: '#ffe6e6', padding: '5px', border: '1px solid #cc0000' }}>
               {errorMsg}
+            </div>
+          )}
+
+          {/* Admin ID / Company ID Input: Only shown for the First Time */}
+          {isFirstTime ? (
+            <div>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '3px', color: '#0a246a' }}>
+                Admin ID / Company ID (First Time Only):
+              </label>
+              <input
+                type="text"
+                value={companyId}
+                onChange={(e) => setCompanyId(e.target.value)}
+                placeholder="उदा. 101"
+                style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid #7f9db9', boxSizing: 'border-box', fontWeight: 'bold' }}
+              />
+            </div>
+          ) : (
+            <div style={{ fontSize: '11px', background: '#e6f4ea', padding: '4px 8px', border: '1px solid #b7e1cd', color: '#137333', fontWeight: 'bold' }}>
+              Connected Admin ID: {companyId}
             </div>
           )}
 

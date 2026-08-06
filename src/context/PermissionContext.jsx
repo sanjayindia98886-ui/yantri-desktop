@@ -3,9 +3,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const PermissionContext = createContext();
 
 export function PermissionProvider(props) {
-  // Default User State
+  // Default User State (Includes company_id for Admin Identification)
   const [user, setUser] = useState({
     id: 1,
+    company_id: 'DEMO_COMP_101',
     username: 'admin',
     role: 'super_admin'
   });

@@ -41,10 +41,12 @@ export default function AccessControl() {
 
   const [users, setUsers] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState('');
+  const [selectedUserRole, setSelectedUserRole] = useState('user');
   const [userPermissions, setUserPermissions] = useState(defaultPermissions);
 
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [newRole, setNewRole] = useState('user');
   const [notification, setNotification] = useState('');
 
   const usernameInputRef = useRef(null);
@@ -96,8 +98,15 @@ export default function AccessControl() {
     setSelectedUserId(userId);
     if (!userId) {
       setUserPermissions(defaultPermissions);
+      setSelectedUserRole('user');
       return;
     }
+
+    const foundUser = users.find((u) => String(u.id) === String(userId));
+    if (foundUser) {
+      setSelectedUserRole(foundUser.role || 'user');
+    }
+
     loadUserPermissions(userId);
   };
 
@@ -164,7 +173,7 @@ export default function AccessControl() {
       body: JSON.stringify({
         username: newUsername.trim(),
         password: newPassword.trim(),
-        role: 'user'
+        role: newRole
       })
     })
       .then((res) => res.json())
@@ -176,6 +185,7 @@ export default function AccessControl() {
           }, 3000);
           setNewUsername('');
           setNewPassword('');
+          setNewRole('user');
           fetchUsers();
         } else {
           setNotification('Error: ' + (data.error || 'Failed to create user'));
@@ -204,6 +214,14 @@ export default function AccessControl() {
       <div style={{ background: '#fff', padding: '15px', border: '1px solid #7a96df', marginBottom: '20px', maxWidth: '600px' }}>
         <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#000', fontWeight: 'bold' }}>➕ Add New User</h3>
         <form onSubmit={handleCreateUser} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <select
+            value={newRole}
+            onChange={(e) => setNewRole(e.target.value)}
+            style={{ padding: '4px 8px', border: '1px solid #7f9db9', fontWeight: 'bold' }}
+          >
+            <option value="user">User</option>
+            <option value="agent">Agent</option>
+          </select>
           <input
             ref={usernameInputRef}
             type="text"
@@ -249,72 +267,85 @@ export default function AccessControl() {
         </div>
 
         {selectedUserId && (
-          <div style={{ marginTop: '15px', borderTop: '1px solid #ccc', paddingTop: '15px' }}>
-            {/* 1. Tabs Permissions */}
-            <h4 style={{ margin: '0 0 10px 0', color: '#0a246a', fontWeight: 'bold' }}>1. Screen Access (Tabs Permission):</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px', fontWeight: 'bold' }}>
-              {TAB_PERMISSIONS.map((item) => (
-                <label key={item.key} style={{ cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={isChecked(userPermissions[item.key])}
-                    onChange={() => handleCheckboxChange(item.key)}
-                  />{' '}
-                  {item.label}
-                </label>
-              ))}
-            </div>
-
-            {/* 2. Action Level Permissions */}
-            <h4 style={{ margin: '15px 0 10px 0', color: '#0a246a', fontWeight: 'bold' }}>2. Action Level Permissions:</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
-              <label style={{ cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={isChecked(userPermissions.can_edit_party)}
-                  onChange={() => handleCheckboxChange('can_edit_party')}
-                />{' '}
-                <strong>Allow Party Edit / Create (F1)</strong> (Unchecked = Read Only)
-              </label>
-
-              <label style={{ cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={isChecked(userPermissions.can_delete_voucher)}
-                  onChange={() => handleCheckboxChange('can_delete_voucher')}
-                />{' '}
-                <strong>Allow Delete Vouchers</strong>
-              </label>
-
-              <div style={{ marginTop: '5px' }}>
-                <label style={{ fontWeight: 'bold' }}>F5 Master Sync Mode: </label>
-                <select
-                  value={userPermissions.f5_sync_mode || 'user'}
-                  onChange={(e) => handleSelectChange('f5_sync_mode', e.target.value)}
-                  style={{ padding: '2px 5px', marginLeft: '5px', fontWeight: 'bold' }}
-                >
-                  <option value="user">User Mode (Download Party / Upload Sale)</option>
-                  <option value="admin">Admin Mode (Upload Party / Download Sale)</option>
-                </select>
+          selectedUserRole === 'agent' ? (
+            <div style={{ marginTop: '15px', borderTop: '1px solid #ccc', paddingTop: '15px' }}>
+              <h4 style={{ margin: '0 0 10px 0', color: '#0a246a', fontWeight: 'bold' }}>Agent Permissions (APK Only):</h4>
+              <div style={{ background: '#fffde7', padding: '10px', border: '1px solid #e6db55', fontSize: '12px', fontWeight: 'bold', lineHeight: '1.8' }}>
+                ✓ F4 - Yantri (Read Only)<br />
+                ✓ F7 - Summary (Read Only)<br />
+                ✓ F11 - Balance Sheet (Read Only)<br />
+                ✓ F12 - Profit & Loss (Read Only)<br />
+                ✓ Change Password Access
               </div>
             </div>
+          ) : (
+            <div style={{ marginTop: '15px', borderTop: '1px solid #ccc', paddingTop: '15px' }}>
+              {/* 1. Tabs Permissions */}
+              <h4 style={{ margin: '0 0 10px 0', color: '#0a246a', fontWeight: 'bold' }}>1. Screen Access (Tabs Permission):</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px', fontWeight: 'bold' }}>
+                {TAB_PERMISSIONS.map((item) => (
+                  <label key={item.key} style={{ cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={isChecked(userPermissions[item.key])}
+                      onChange={() => handleCheckboxChange(item.key)}
+                    />{' '}
+                    {item.label}
+                  </label>
+                ))}
+              </div>
 
-            <button
-              onClick={handleSavePermissions}
-              style={{
-                marginTop: '20px',
-                padding: '6px 20px',
-                background: '#0a246a',
-                color: '#fff',
-                border: 'none',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                fontSize: '12px'
-              }}
-            >
-              Save Access Settings
-            </button>
-          </div>
+              {/* 2. Action Level Permissions */}
+              <h4 style={{ margin: '15px 0 10px 0', color: '#0a246a', fontWeight: 'bold' }}>2. Action Level Permissions:</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
+                <label style={{ cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={isChecked(userPermissions.can_edit_party)}
+                    onChange={() => handleCheckboxChange('can_edit_party')}
+                  />{' '}
+                  <strong>Allow Party Edit / Create (F1)</strong> (Unchecked = Read Only)
+                </label>
+
+                <label style={{ cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={isChecked(userPermissions.can_delete_voucher)}
+                    onChange={() => handleCheckboxChange('can_delete_voucher')}
+                  />{' '}
+                  <strong>Allow Delete Vouchers</strong>
+                </label>
+
+                <div style={{ marginTop: '5px' }}>
+                  <label style={{ fontWeight: 'bold' }}>F5 Master Sync Mode: </label>
+                  <select
+                    value={userPermissions.f5_sync_mode || 'user'}
+                    onChange={(e) => handleSelectChange('f5_sync_mode', e.target.value)}
+                    style={{ padding: '2px 5px', marginLeft: '5px', fontWeight: 'bold' }}
+                  >
+                    <option value="user">User Mode (Download Party / Upload Sale)</option>
+                    <option value="admin">Admin Mode (Upload Party / Download Sale)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                onClick={handleSavePermissions}
+                style={{
+                  marginTop: '20px',
+                  padding: '6px 20px',
+                  background: '#0a246a',
+                  color: '#fff',
+                  border: 'none',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                Save Access Settings
+              </button>
+            </div>
+          )
         )}
       </div>
     </div>
