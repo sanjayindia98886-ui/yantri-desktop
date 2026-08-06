@@ -141,20 +141,22 @@ const updateUserPermissions = (req, res) => {
   });
 };
 
-// 4. Create New User / Agent
+// 4. Create New User / Agent (UPDATED with Default Password '1234')
 const createUser = (req, res) => {
   const { username, password, role, linked_party_name } = req.body;
 
-  if (!username || !password) {
-    return res.status(400).json({ error: "Username and password are required" });
+  if (!username || !username.trim()) {
+    return res.status(400).json({ error: "Username is required" });
   }
 
-  const userRole = role ? role.toLowerCase() : 'user';
+  // Agar password Pass nahi hota ya khali hai, to default '1234' set kar do
+  const userPassword = (password && String(password).trim()) ? String(password).trim() : '1234';
+  const userRole = role ? String(role).toLowerCase() : 'user';
   const linkedParty = linked_party_name || (userRole === 'agent' ? username.trim() : '');
 
   const insertUserQuery = "INSERT INTO users (username, password, role, linked_party_name) VALUES ($1, $2, $3, $4) RETURNING id";
 
-  db.query(insertUserQuery, [username.trim(), password.trim(), userRole, linkedParty], (err, result) => {
+  db.query(insertUserQuery, [username.trim(), userPassword, userRole, linkedParty], (err, result) => {
     if (err) {
       if (err.message && err.message.includes('unique')) {
         return res.status(400).json({ error: "Username already exists" });
@@ -195,7 +197,7 @@ const loginUser = (req, res) => {
     return res.status(400).json({ success: false, message: "Username and password are required" });
   }
 
-  const sqlUser = "SELECT * FROM users WHERE LOWER(TRIM(username)) = LOWER(TRIM($1)) AND password = $2";
+  const sqlUser = "SELECT * FROM users WHERE LOWER(TRIM(username)) = LOWER(TRIM($1)) AND TRIM(password) = TRIM($2)";
   
   db.query(sqlUser, [username.trim(), password.trim()], (err, result) => {
     if (err) {
@@ -240,7 +242,7 @@ const changePassword = (req, res) => {
     return res.status(400).json({ success: false, message: "UserId, old password and new password are required" });
   }
 
-  const verifySql = "SELECT * FROM users WHERE id = $1 AND password = $2";
+  const verifySql = "SELECT * FROM users WHERE id = $1 AND TRIM(password) = TRIM($2)";
   db.query(verifySql, [userId, oldPassword.trim()], (err, result) => {
     if (err) {
       return res.status(500).json({ success: false, message: err.message });
