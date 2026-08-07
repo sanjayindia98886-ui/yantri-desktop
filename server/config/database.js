@@ -1,4 +1,4 @@
-const { Pool } = require("pg");
+Const { Pool } = require("pg");
 require("dotenv").config();
 
 // Supabase PostgreSQL Connection Pool
@@ -50,7 +50,7 @@ const initDatabase = async () => {
     await pool.query(
       "CREATE TABLE IF NOT EXISTS parties (" +
         "pno SERIAL PRIMARY KEY, " +
-        "company_id VARCHAR(100) NOT NULL DEFAULT 'DEMO_COMP_101', " +
+        "company_id VARCHAR(100) NOT NULL, " +
         "party_name VARCHAR(255) NOT NULL, " +
         "city VARCHAR(100), " +
         "phone VARCHAR(20), " +
@@ -77,7 +77,7 @@ const initDatabase = async () => {
     await pool.query(
       "CREATE TABLE IF NOT EXISTS sales (" +
         "sale_id SERIAL PRIMARY KEY, " +
-        "company_id VARCHAR(100) NOT NULL DEFAULT 'DEMO_COMP_101', " +
+        "company_id VARCHAR(100) NOT NULL, " +
         "sale_date VARCHAR(50) NOT NULL, " +
         "game_name VARCHAR(100) NOT NULL, " +
         "party_name VARCHAR(255) NOT NULL, " +
@@ -99,7 +99,7 @@ const initDatabase = async () => {
     await pool.query(
       "CREATE TABLE IF NOT EXISTS pending_sales (" +
         "id SERIAL PRIMARY KEY, " +
-        "company_id VARCHAR(100) DEFAULT 'DEMO_COMP_101', " +
+        "company_id VARCHAR(100), " +
         "sale_date VARCHAR(50), " +
         "game_name VARCHAR(100), " +
         "uid VARCHAR(50), " +
@@ -117,7 +117,7 @@ const initDatabase = async () => {
     await pool.query(
       "CREATE TABLE IF NOT EXISTS upload_logs (" +
         "id SERIAL PRIMARY KEY, " +
-        "company_id VARCHAR(100) DEFAULT 'DEMO_COMP_101', " +
+        "company_id VARCHAR(100), " +
         "sale_date VARCHAR(50), " +
         "game_name VARCHAR(100), " +
         "uid VARCHAR(50), " +
@@ -130,7 +130,7 @@ const initDatabase = async () => {
     await pool.query(
       "CREATE TABLE IF NOT EXISTS server_parties (" +
         "pno INT PRIMARY KEY, " +
-        "company_id VARCHAR(100) NOT NULL DEFAULT 'DEMO_COMP_101', " +
+        "company_id VARCHAR(100) NOT NULL, " +
         "party_name VARCHAR(255) NOT NULL, " +
         "opening_balance NUMERIC DEFAULT 0" +
       ");"
@@ -151,7 +151,7 @@ const initDatabase = async () => {
     await pool.query(
       "CREATE TABLE IF NOT EXISTS results (" +
         "result_id SERIAL PRIMARY KEY, " +
-        "company_id VARCHAR(100) NOT NULL DEFAULT 'DEMO_COMP_101', " +
+        "company_id VARCHAR(100) NOT NULL, " +
         "result_date VARCHAR(50) NOT NULL, " +
         "game_name VARCHAR(100) NOT NULL, " +
         "winning_number VARCHAR(50) NOT NULL, " +
@@ -163,7 +163,7 @@ const initDatabase = async () => {
     await pool.query(
       "CREATE TABLE IF NOT EXISTS ledger_entries (" +
         "entry_id SERIAL PRIMARY KEY, " +
-        "company_id VARCHAR(100) NOT NULL DEFAULT 'DEMO_COMP_101', " +
+        "company_id VARCHAR(100) NOT NULL, " +
         "entry_date VARCHAR(50) NOT NULL, " +
         "party_name VARCHAR(255) NOT NULL, " +
         "game_name VARCHAR(100), " +
@@ -180,7 +180,7 @@ const initDatabase = async () => {
     await pool.query(
       "CREATE TABLE IF NOT EXISTS users (" +
         "id SERIAL PRIMARY KEY, " +
-        "company_id VARCHAR(100) DEFAULT 'DEMO_COMP_101', " +
+        "company_id VARCHAR(100), " +
         "username VARCHAR(100) NOT NULL, " +
         "password VARCHAR(255) NOT NULL, " +
         "role VARCHAR(50) CHECK(role IN ('super_admin', 'user', 'agent')) DEFAULT 'user', " +
