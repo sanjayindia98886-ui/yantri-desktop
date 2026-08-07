@@ -1,4 +1,4 @@
-Const { Pool } = require("pg");
+const { Pool } = require("pg");
 require("dotenv").config();
 
 // Supabase PostgreSQL Connection Pool
